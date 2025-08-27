@@ -41,7 +41,7 @@ def main():
     build()
 
     std_out = run()
-    png_from_ppm(std_out, time.strftime("%Y%m%d-%H%M%S"))
+    png_from_ppm(std_out, time.strftime("%Y.%m.%d-%H.%M.%S"))
     
 
 

@@ -11,7 +11,3 @@ Scene::~Scene() {
         delete obj;
     }
 }
-
-void Scene::render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]) const {
-    camera.render(pixels);   
-}
