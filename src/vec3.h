@@ -43,6 +43,15 @@ public:
         }
     }
 
+    Vec3 copy() const {
+        return Vec3(x, y, z);
+    }
+
+    inline void operator += (const Vec3& v) {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+    }
 };
 
 inline Vec3 operator + (const Vec3& v1, const Vec3& v2) {
