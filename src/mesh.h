@@ -5,5 +5,5 @@
 
 class Mesh {
 public:
-    virtual bool intersection(const Ray& ray, Vec3& pos) const = 0;
+    virtual bool intersection(const Ray& ray, Vec3& pos, Vec3& normal) const = 0;
 };

@@ -3,14 +3,13 @@ import os
 import numpy as np
 import time
 
-# 0 = DEV, 1 = FAST
-MODE = 0
+DEV = True
 
 def build():
     start_time = time.time()
-    if MODE == 0:
-        os.system("g++ -g --std=c++17 ./src/*.cpp -o ./build/main")
-    elif MODE == 1:
+    if DEV:
+        os.system("g++ -g --std=c++17 ./src/*.cpp -o ./build/main -Wall")
+    else:
         os.system("g++ -Ofast -march=native -flto --std=c++17 ./src/*.cpp -o ./build/main")
     end_time = time.time()
     print(f"build complete in {end_time - start_time} seconds")

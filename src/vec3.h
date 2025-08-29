@@ -47,10 +47,34 @@ public:
         return Vec3(x, y, z);
     }
 
+    inline void operator = (const Vec3& v) {
+        x = v.x;
+        y = v.y;
+        z = v.z;
+    }
+
     inline void operator += (const Vec3& v) {
         x += v.x;
         y += v.y;
         z += v.z;
+    }
+
+    inline void operator -= (const Vec3& v) {
+        x -= v.x;
+        y -= v.y;
+        z -= v.z;
+    }
+
+    inline void operator *= (double s) {
+        x *= s;
+        y *= s;
+        z *= s;
+    }
+
+    inline void operator /= (double s) {
+        x /= s;
+        y /= s;
+        z /= s;
     }
 };
 

@@ -10,10 +10,11 @@ public:
     Camera();
 
     Vec3 position;
-    Vec3 direction;
+    Vec3 right;
+    Vec3 up;
 
     void setScene(Scene* s);
-    void render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]) const;
+    void render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]);
 
 private:
     Color castRay(const Ray& ray) const;
