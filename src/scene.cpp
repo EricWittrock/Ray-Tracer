@@ -8,8 +8,7 @@ Scene::Scene() {
 }
 
 Scene::~Scene() {
-    // for (Mesh* obj : objects) {
-    //     delete obj;
-    //     obj = nullptr;
-    // }
+    for (Mesh* obj : objects) {
+        delete obj;
+    }
 }
