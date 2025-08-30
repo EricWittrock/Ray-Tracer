@@ -42,6 +42,9 @@ void Camera::render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3])
 }
 
 Vec3 Camera::castRay(const Ray& ray) const {
+    if (ray.numBounces > 4) {
+        return Vec3(0, 0, 0);
+    }
 
     double nearestHitDistanceSqr = 1e10;
     Vec3 pos(0, 0, 0);
@@ -59,10 +62,16 @@ Vec3 Camera::castRay(const Ray& ray) const {
         }
     }
 
-    if(nearestHitDistanceSqr < 1e10) {
-        Vec3 lightDir = Vec3(0, -1, 0.4).normalize();
-        double diffuse = std::max(0.0, norm.dot(lightDir)) * 1.0;
-        return Vec3(diffuse, diffuse, diffuse);
+    if (nearestHitDistanceSqr < 1e10) { // hit sphere
+        Ray bounceRay = Ray(pos, ray.direction.reflect(norm).normalize());
+        bounceRay.marchForward(0.0001);
+        bounceRay.numBounces = ray.numBounces + 1;
+
+        Vec3 color = Vec3(0.2, 0.9, 0.85) * castRay(bounceRay);
+
+        // Vec3 lightDir = Vec3(0, -1, 0.4).normalize();
+        // double diffuse = std::max(0.0, norm.dot(lightDir)) * 1.0;
+        return color;
     }
 
 

@@ -26,6 +26,16 @@ public:
         return std::sqrt(lengthSqr());
     }
 
+    Vec3 reflect(const Vec3& normal) const {
+        double d = 2.0 * dot(normal);
+        return Vec3(
+            x - d * normal.x,
+            y - d * normal.y,
+            z - d * normal.z
+        );
+        // return this->copy();
+    }
+
     Vec3 normalize() const {
         double invlen = 1.0 / length();
         if (invlen > 0) {
@@ -84,6 +94,10 @@ inline Vec3 operator + (const Vec3& v1, const Vec3& v2) {
 
 inline Vec3 operator - (const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
+}
+
+inline Vec3 operator * (const Vec3& v1, const Vec3& v2) {
+    return Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
 }
 
 inline Vec3 operator * (const Vec3& v, double s) {
