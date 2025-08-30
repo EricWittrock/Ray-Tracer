@@ -1,7 +1,6 @@
 #pragma once
 #include "vec3.h"
 #include "config.h"
-#include "color.h"
 #include "ray.h"
 #include "scene.h"
 
@@ -17,6 +16,6 @@ public:
     void render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]);
 
 private:
-    Color castRay(const Ray& ray) const;
+    Vec3 castRay(const Ray& ray) const;
     Scene* scene;
 };

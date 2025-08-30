@@ -1,6 +1,7 @@
 #include "camera.h"
 #include "mesh.h"
 #include "scene.h"
+#include <cmath>
 
 Camera::Camera()
     : position(0, 0, 0),
@@ -31,16 +32,16 @@ void Camera::render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3])
             Vec3 dir = (s - position).normalize();
             Ray ray(position, dir);
 
-            Color clr = castRay(ray);
+            Vec3 clr = castRay(ray);
 
-            pixels[i][j][0] = clr.r;
-            pixels[i][j][1] = clr.g;
-            pixels[i][j][2] = clr.b;
+            pixels[i][j][0] = clr.x;
+            pixels[i][j][1] = clr.y;
+            pixels[i][j][2] = clr.z;
         }
     }
 }
 
-Color Camera::castRay(const Ray& ray) const {
+Vec3 Camera::castRay(const Ray& ray) const {
 
     double nearestHitDistanceSqr = 1e10;
     Vec3 pos(0, 0, 0);
@@ -61,8 +62,16 @@ Color Camera::castRay(const Ray& ray) const {
     if(nearestHitDistanceSqr < 1e10) {
         Vec3 lightDir = Vec3(0, -1, 0.4).normalize();
         double diffuse = std::max(0.0, norm.dot(lightDir)) * 1.0;
-        return Color(diffuse, diffuse, diffuse);
+        return Vec3(diffuse, diffuse, diffuse);
     }
 
-    return Color(0, 0.0, 0);
+
+    double x = atan2(ray.direction.z, ray.direction.x) / (2.0 * 3.14159) + 0.5;
+    double y = -asin(ray.direction.y) / (2.0 * 3.14159) + 0.5;
+
+    x *= scene->environmentMap.width;
+    y *= scene->environmentMap.height;
+
+    Vec3 backgroundColor = scene->environmentMap.getColor(x, y);
+    return backgroundColor * 5.0;
 }
