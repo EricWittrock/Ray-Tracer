@@ -2,9 +2,10 @@ from PIL import Image
 import os
 import numpy as np
 import time
+import sys
 
 
-DEV = True
+DEV = False
 
 def build():
     start_time = time.time()
@@ -13,7 +14,7 @@ def build():
     else:
         os.system("g++ -Ofast -march=native -flto --std=c++17 ./src/*.cpp -o ./build/main")
     end_time = time.time()
-    print(f"build complete in {end_time - start_time} seconds")
+    print(f"build (DEV={DEV}) complete in {end_time - start_time} seconds")
 
 
 def run():
@@ -46,5 +47,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "dev":
+        DEV = True
     main()
     

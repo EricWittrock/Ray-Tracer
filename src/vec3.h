@@ -1,10 +1,25 @@
 #pragma once
 #include <cmath>
+#include <cstdlib>
+#include <random>
 
 class Vec3 {
 public:
     double x, y, z;
     Vec3(double x, double y, double z) : x(x), y(y), z(z) {}
+
+    static Vec3 random() {
+        return Vec3(
+            (static_cast<double>(rand()) / RAND_MAX) * 2.0 - 1.0,
+            (static_cast<double>(rand()) / RAND_MAX) * 2.0 - 1.0,
+            (static_cast<double>(rand()) / RAND_MAX) * 2.0 - 1.0
+        );
+    }
+
+    static Vec3 randomGaussian(std::mt19937 &rng, double stddev = 1.0) {
+        std::normal_distribution<double> dist(0.0, stddev);
+        return Vec3(dist(rng), dist(rng), dist(rng));
+    }
 
     inline double dot(const Vec3& v) const {
         return x * v.x + y * v.y + z * v.z;
@@ -44,13 +59,14 @@ public:
         return Vec3(0, 0, 0);
     }
 
-    void normalizeSelf() {
-        double invlen = 1.0 / length();
+    static Vec3 normalize(Vec3& v) {
+        double invlen = 1.0 / v.length();
         if (invlen > 0) {
-            x *= invlen;
-            y *= invlen;
-            z *= invlen;
+            v.x *= invlen;
+            v.y *= invlen;
+            v.z *= invlen;
         }
+        return v;
     }
 
     Vec3 copy() const {

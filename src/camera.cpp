@@ -17,8 +17,8 @@ void Camera::setScene(Scene* s) {
 
 void Camera::render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]) 
 {
-    up.normalizeSelf();
-    right.normalizeSelf();
+    Vec3::normalize(up);
+    Vec3::normalize(right);
     Vec3 forward = up.cross(right).normalize();
 
     for (int j = 0; j < IMAGE_WIDTH; j++) {
@@ -41,7 +41,8 @@ void Camera::render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3])
     }
 }
 
-Vec3 Camera::castRay(const Ray& ray) const {
+Vec3 Camera::castRay(const Ray& ray) {
+    // std::mt19937 rng{SEED};
     if (ray.numBounces > 4) {
         return Vec3(0, 0, 0);
     }
@@ -63,14 +64,24 @@ Vec3 Camera::castRay(const Ray& ray) const {
     }
 
     if (nearestHitDistanceSqr < 1e10) { // hit sphere
-        Ray bounceRay = Ray(pos, ray.direction.reflect(norm).normalize());
-        bounceRay.marchForward(0.0001);
-        bounceRay.numBounces = ray.numBounces + 1;
 
-        Vec3 color = Vec3(0.2, 0.9, 0.85) * castRay(bounceRay);
 
-        // Vec3 lightDir = Vec3(0, -1, 0.4).normalize();
-        // double diffuse = std::max(0.0, norm.dot(lightDir)) * 1.0;
+        Vec3 color(0, 0, 0);
+        // exponential decay because relative amount of information from rays of each subsiquent bounce
+        const int numSamples = 20 * exp(-ray.numBounces);
+        if (numSamples < 1) {
+            return Vec3(0, 0, 0);
+        }
+        for(int i = 0; i < numSamples; i++) {
+            Vec3 newDir = ray.direction.reflect((norm + Vec3::randomGaussian(rng, 0.05)).normalize());
+            Ray bounceRay = Ray(pos, newDir);
+            bounceRay.marchForward(0.0001);
+            bounceRay.numBounces = ray.numBounces + 1;
+            color += Vec3(0.95, 0.95, 0.9) * castRay(bounceRay);
+            // todo: terminate early when rays get too dark. they don't have much more information to give
+        }
+        color /= static_cast<double>(numSamples);
+
         return color;
     }
 
@@ -82,5 +93,5 @@ Vec3 Camera::castRay(const Ray& ray) const {
     y *= scene->environmentMap.height;
 
     Vec3 backgroundColor = scene->environmentMap.getColor(x, y);
-    return backgroundColor * 5.0;
+    return backgroundColor * 1.0;
 }

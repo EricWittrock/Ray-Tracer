@@ -4,6 +4,8 @@
 #include "ray.h"
 #include "scene.h"
 
+#define SEED 28393579 // just a big ol' prime number
+
 class Camera {
 public:
     Camera();
@@ -16,6 +18,7 @@ public:
     void render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]);
 
 private:
-    Vec3 castRay(const Ray& ray) const;
+    Vec3 castRay(const Ray& ray);
     Scene* scene;
+    std::mt19937 rng{SEED};
 };
