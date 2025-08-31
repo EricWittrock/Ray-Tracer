@@ -32,18 +32,23 @@ void Camera::render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3])
             Vec3 dir = (s - position).normalize();
             Ray ray(position, dir);
 
-            Vec3 clr = castRay(ray);
+            Vec3 clr_sum(0, 0, 0);
+            for(int n = 0; n < 50; n++) {
+                Vec3 clr = castRay(ray);
+                clr_sum += clr;
+            }
+            clr_sum /= 50.0;
 
-            pixels[i][j][0] = clr.x;
-            pixels[i][j][1] = clr.y;
-            pixels[i][j][2] = clr.z;
+            pixels[i][j][0] = clr_sum.x;
+            pixels[i][j][1] = clr_sum.y;
+            pixels[i][j][2] = clr_sum.z;
         }
     }
 }
 
 Vec3 Camera::castRay(const Ray& ray) {
     // std::mt19937 rng{SEED};
-    if (ray.numBounces > 4) {
+    if (ray.numBounces > 2) {
         return Vec3(0, 0, 0);
     }
 
@@ -68,12 +73,12 @@ Vec3 Camera::castRay(const Ray& ray) {
 
         Vec3 color(0, 0, 0);
         // exponential decay because relative amount of information from rays of each subsiquent bounce
-        const int numSamples = 20 * exp(-ray.numBounces);
+        const int numSamples = 5 * exp(-ray.numBounces);
         if (numSamples < 1) {
             return Vec3(0, 0, 0);
         }
         for(int i = 0; i < numSamples; i++) {
-            Vec3 newDir = ray.direction.reflect((norm + Vec3::randomGaussian(rng, 0.05)).normalize());
+            Vec3 newDir = ray.direction.reflect((norm + Vec3::random()).normalize());
             Ray bounceRay = Ray(pos, newDir);
             bounceRay.marchForward(0.0001);
             bounceRay.numBounces = ray.numBounces + 1;
