@@ -10,6 +10,12 @@ public:
         position += direction * distance;
     }
 
+    Ray copy() const {
+        Ray r(position, direction);
+        r.numBounces = numBounces;
+        return r;
+    }
+
     Vec3 position;
     Vec3 direction;
     int numBounces = 0;

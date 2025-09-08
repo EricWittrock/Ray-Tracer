@@ -10,9 +10,9 @@ DEV = False
 def build():
     start_time = time.time()
     if DEV:
-        os.system("g++ -g --std=c++17 ./src/*.cpp -o ./build/main -Wall")
+        os.system("g++ -g --std=c++17 ./cpu/*.cpp -o ./build/main -Wall")
     else:
-        os.system("g++ -Ofast -march=native -flto --std=c++17 ./src/*.cpp -o ./build/main")
+        os.system("g++ -Ofast -march=native -flto --std=c++17 ./cpu/*.cpp -o ./build/main")
     end_time = time.time()
     print(f"build (DEV={DEV}) complete in {end_time - start_time} seconds")
 

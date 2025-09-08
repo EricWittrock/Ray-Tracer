@@ -18,7 +18,7 @@ public:
     void render(double pixels[IMAGE_WIDTH][IMAGE_WIDTH][3]);
 
 private:
-    Vec3 castRay(const Ray& ray);
+    Vec3 castRay(Ray& ray);
     Scene* scene;
     std::mt19937 rng{SEED};
 };

@@ -3,6 +3,7 @@
 #include "../lib/stb_image/stb_image_write.h"
 #include <string>
 #include "vec3.h"
+#include <cstring>
 
 
 class Texture {
