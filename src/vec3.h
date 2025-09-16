@@ -3,29 +3,37 @@
 #include <cstdlib>
 #include <random>
 
+#ifndef __CUDACC__
+#define __host__
+#define __device__
+#endif
+
+
 class Vec3 {
 public:
-    double x, y, z;
-    Vec3(double x, double y, double z) : x(x), y(y), z(z) {}
+    float x, y, z;
+    __host__ __device__ Vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
-    static Vec3 random() {
-        return Vec3(
-            (static_cast<double>(rand()) / RAND_MAX) * 2.0 - 1.0,
-            (static_cast<double>(rand()) / RAND_MAX) * 2.0 - 1.0,
-            (static_cast<double>(rand()) / RAND_MAX) * 2.0 - 1.0
-        );
-    }
+    __host__ __device__ Vec3() : x(0.0f), y(0.0f), z(0.0f) {}
 
-    static Vec3 randomGaussian(std::mt19937 &rng, double stddev = 1.0) {
-        std::normal_distribution<double> dist(0.0, stddev);
-        return Vec3(dist(rng), dist(rng), dist(rng));
-    }
+    // __host__ __device__ static Vec3 random() {
+    //     return Vec3(
+    //         (static_cast<float>(rand()) / RAND_MAX) * 2.0 - 1.0,
+    //         (static_cast<float>(rand()) / RAND_MAX) * 2.0 - 1.0,
+    //         (static_cast<float>(rand()) / RAND_MAX) * 2.0 - 1.0
+    //     );
+    // }
 
-    inline double dot(const Vec3& v) const {
+    // __host__ __device__ static Vec3 randomGaussian(std::mt19937 &rng, float stddev = 1.0) {
+    //     std::normal_distribution<float> dist(0.0, stddev);
+    //     return Vec3(dist(rng), dist(rng), dist(rng));
+    // }
+
+    __host__ __device__ inline float dot(const Vec3& v) const {
         return x * v.x + y * v.y + z * v.z;
     }
 
-    inline Vec3 cross(const Vec3& v) const {
+    __host__ __device__ inline Vec3 cross(const Vec3& v) const {
         return Vec3(
             y * v.z - z * v.y,
             z * v.x - x * v.z,
@@ -33,16 +41,16 @@ public:
         );
     }
 
-    inline double lengthSqr() const {
+    __host__ __device__ inline float lengthSqr() const {
         return x * x + y * y + z * z;
     }
 
-    inline double length() const {
-        return std::sqrt(lengthSqr());
+    __host__ __device__ inline float length() const {
+        return std::sqrtf(lengthSqr());
     }
 
-    Vec3 reflect(const Vec3& normal) const {
-        double d = 2.0 * dot(normal);
+    __host__ __device__ inline Vec3 reflect(const Vec3& normal) const {
+        float d = 2.0f * dot(normal);
         return Vec3(
             x - d * normal.x,
             y - d * normal.y,
@@ -51,16 +59,16 @@ public:
         // return this->copy();
     }
 
-    Vec3 normalize() const {
-        double invlen = 1.0 / length();
+    __host__ __device__ inline Vec3 normalize() const {
+        float invlen = 1.0f / length();
         if (invlen > 0) {
             return Vec3(x * invlen, y * invlen, z * invlen);
         }
         return Vec3(0, 0, 0);
     }
 
-    static Vec3 normalize(Vec3& v) {
-        double invlen = 1.0 / v.length();
+    __host__ __device__ static Vec3 normalize(Vec3& v) {
+        float invlen = 1.0f / v.length();
         if (invlen > 0) {
             v.x *= invlen;
             v.y *= invlen;
@@ -69,57 +77,57 @@ public:
         return v;
     }
 
-    Vec3 copy() const {
+    __host__ __device__ inline Vec3 copy() const {
         return Vec3(x, y, z);
     }
 
-    inline void operator = (const Vec3& v) {
+    __host__ __device__ inline void operator = (const Vec3& v) {
         x = v.x;
         y = v.y;
         z = v.z;
     }
 
-    inline void operator += (const Vec3& v) {
+    __host__ __device__ inline void operator += (const Vec3& v) {
         x += v.x;
         y += v.y;
         z += v.z;
     }
 
-    inline void operator -= (const Vec3& v) {
+    __host__ __device__ inline void operator -= (const Vec3& v) {
         x -= v.x;
         y -= v.y;
         z -= v.z;
     }
 
-    inline void operator *= (double s) {
+    __host__ __device__ inline void operator *= (float s) {
         x *= s;
         y *= s;
         z *= s;
     }
 
-    inline void operator /= (double s) {
+    __host__ __device__ inline void operator /= (float s) {
         x /= s;
         y /= s;
         z /= s;
     }
 };
 
-inline Vec3 operator + (const Vec3& v1, const Vec3& v2) {
+__host__ __device__ inline Vec3 operator + (const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
 }
 
-inline Vec3 operator - (const Vec3& v1, const Vec3& v2) {
+__host__ __device__ inline Vec3 operator - (const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
 }
 
-inline Vec3 operator * (const Vec3& v1, const Vec3& v2) {
+__host__ __device__ inline Vec3 operator * (const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
 }
 
-inline Vec3 operator * (const Vec3& v, double s) {
+__host__ __device__ inline Vec3 operator * (const Vec3& v, float s) {
     return Vec3(v.x * s, v.y * s, v.z * s);
 }
 
-inline Vec3 operator / (const Vec3& v, double s) {
+__host__ __device__ inline Vec3 operator / (const Vec3& v, float s) {
     return Vec3(v.x / s, v.y / s, v.z / s);
 }

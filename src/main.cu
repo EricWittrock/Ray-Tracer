@@ -3,54 +3,73 @@
 
 #include "texture.h"
 #include "vec3.h"
+#include "ray.h"
 #include "config.h"
+#include "sphere.h"
+#include "object.h"
+
+#define NUM_OBJECTS 1
 
 
-// __global__ void swap_channels(float* img, int width, int height, int channels) {
-//     int x = blockIdx.x * blockDim.x + threadIdx.x;
-//     int y = blockIdx.y * blockDim.y + threadIdx.y;
+__device__ Vec3 castRay(Ray& ray) {
+    Vec3 color(0.0f, 1.0f, 0.0f);
+    return color;
+}
 
-//     if (x < width && y < height) {
-//         int idx = (y * width + x) * channels;
-//         float r = img[idx + 0];
-//         float g = img[idx + 1];
-//         float b = img[idx + 2];
-
-//         // Swap R and B
-//         img[idx + 0] = b;
-//         img[idx + 1] = g;
-//         img[idx + 2] = r;
-//     }
-// }
-
-__global__ void render(float* pixels) {
+__global__ void render(float* pixels, Object** objects) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    // Vec3 up(0.0, 1.0, 0.0);
-    // Vec3 right(1.0, 0.0, 0.0);
-    // Vec3::normalize(up);
-    // Vec3::normalize(right);
-    // Vec3 forward = up.cross(right).normalize();
+    Vec3 cam_position(0.0f, 0.0f, 0.0f);
+    Vec3 up(0.0f, 1.0f, 0.0f);
+    Vec3 right(1.0f, 0.0f, 0.0f);
+    Vec3::normalize(up);
+    Vec3::normalize(right);
+    Vec3 forward = up.cross(right).normalize();
+
+
+    const float sx = static_cast<float>(x + 0.5f) / IMAGE_WIDTH - 0.5f;
+    const float sy = static_cast<float>(y + 0.5f) / IMAGE_WIDTH - 0.5f;
+    Vec3 s = forward * FOCAL_LENGTH + right * sx + up * sy;
+    Vec3 dir = (s - cam_position).normalize();
 
 
     if (x < IMAGE_WIDTH && y < IMAGE_WIDTH) {
-        int idx = (y * IMAGE_WIDTH + x) * 3;
+        Ray ray(cam_position, dir);
+        // Vec3 color = castRay(ray);
+        Vec3 color(0.0f, 1.0f, 0.0f);
 
-        pixels[idx + 0] = static_cast<float>(x) / IMAGE_WIDTH;
-        pixels[idx + 1] = static_cast<float>(y) / IMAGE_WIDTH;
-        pixels[idx + 2] = static_cast<float>(y) / IMAGE_WIDTH;
+        for (int i = 0; i < NUM_OBJECTS; i++) {
+            Vec3 pos;
+            Vec3 normal;
+            if (objects[i]->intersection(ray, pos, normal)) {
+                color = Vec3(1.0f, 0.0f, 0.0f);
+            }
+        }
+        
+        int idx = (y * IMAGE_WIDTH + x) * 3;
+        pixels[idx + 0] = color.x;
+        pixels[idx + 1] = color.y;
+        pixels[idx + 2] = color.z;
     }
 
 }
 
 
+__global__ void initScene(Object** objects) {
+    if (threadIdx.x == 0 && blockIdx.x == 0) { // TODO: is this check necessary?
+        objects[0] = new Sphere(Vec3(0.0f, 0.0f, -5.0f), 2.0f);
 
-int main(int argc, char** argv) {
+    }
+}
 
-    // Texture t("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\img256.jpg");
 
-    // size_t img_bytes = t.sizeBytes();
+int main(int argc, char** argv) 
+{
+    Object **objects;
+    cudaMalloc((void **)&objects, NUM_OBJECTS * sizeof(Object*));
+    initScene<<<1, 1>>>(objects);
+
     size_t img_bytes = IMAGE_WIDTH * IMAGE_WIDTH * 3 * sizeof(float);
     float* pixels;
     cudaMalloc(&pixels, img_bytes);
@@ -60,14 +79,14 @@ int main(int argc, char** argv) {
     dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x,
               (IMAGE_WIDTH + block.y - 1) / block.y);
 
-    render<<<grid, block>>>(pixels);
+    render<<<grid, block>>>(pixels, objects);
     cudaDeviceSynchronize();
 
     float* pixels_cpu = new float[IMAGE_WIDTH * IMAGE_WIDTH * 3];
     cudaMemcpy(pixels_cpu, pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
 
 
-    Texture::saveImgData("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\output.png", pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
+    Texture::saveImgData("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\output\\output.png", pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
     delete[] pixels_cpu;
 
     // t.save("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\output.png");
