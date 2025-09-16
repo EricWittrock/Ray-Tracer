@@ -16,7 +16,7 @@ __device__ Vec3 castRay(Ray& ray) {
     return color;
 }
 
-__global__ void render(float* pixels, Object** objects) {
+__global__ void render(float* pixels, Object** objects, float* envTex) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -38,6 +38,17 @@ __global__ void render(float* pixels, Object** objects) {
         Ray ray(cam_position, dir);
         // Vec3 color = castRay(ray);
         Vec3 color(0.0f, 1.0f, 0.0f);
+
+        const int width = 4096;
+        const int height = 2048;
+        double backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0 * 3.14159) + 0.5;
+        double backdropY = -asin(ray.direction.y) / (2.0 * 3.14159) + 0.5;
+        backdropX *= width;
+        backdropY *= height;
+        int envImgX = static_cast<int>(backdropX) % width; // wrap around
+        int envImgY = static_cast<int>(backdropY) % height;
+        int envI = (envImgY * width + envImgX) * 3;
+        color = Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]);
 
         for (int i = 0; i < NUM_OBJECTS; i++) {
             Vec3 pos;
@@ -75,11 +86,16 @@ int main(int argc, char** argv)
     cudaMalloc(&pixels, img_bytes);
     // cudaMemcpy(d_img, t.getData(), img_bytes, cudaMemcpyKind::cudaMemcpyHostToDevice);
 
-    dim3 block(16, 16);
-    dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x,
-              (IMAGE_WIDTH + block.y - 1) / block.y);
 
-    render<<<grid, block>>>(pixels, objects);
+    Texture environmentMap = Texture("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr");
+    float* gpuEnvTex;
+    cudaMalloc(&gpuEnvTex, environmentMap.sizeBytes());
+    cudaMemcpy(gpuEnvTex, environmentMap.getData(), environmentMap.sizeBytes(), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    std::cout << "env: " << environmentMap.width << "x" << environmentMap.height << "\n";
+
+    dim3 block(16, 16);
+    dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x, (IMAGE_WIDTH + block.y - 1) / block.y);
+    render<<<grid, block>>>(pixels, objects, gpuEnvTex);
     cudaDeviceSynchronize();
 
     float* pixels_cpu = new float[IMAGE_WIDTH * IMAGE_WIDTH * 3];
@@ -94,6 +110,6 @@ int main(int argc, char** argv)
     // cudaFree(d_img);
     // stbi_image_free(h_img);
 
-    std::cout << "Saved output2\n";
+    std::cout << "Saved output\n";
     return 0;
 }
