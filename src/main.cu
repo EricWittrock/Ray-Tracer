@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cuda_runtime.h>
-// #include <curand_kernel.h>
+#include <curand_kernel.h>
 
 #include "texture.h"
 #include "vec3.h"
@@ -34,6 +34,10 @@ __device__ void toneMap(Vec3& color) {
 __global__ void render(float* pixels, Object** objects, float* envTex) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= IMAGE_WIDTH || y >= IMAGE_WIDTH) return;
+
+    curandState randState;
+    curand_init(37811, x + y * IMAGE_WIDTH, 0, &randState);
 
     Vec3 cam_position(0.0f, 0.0f, 0.0f);
     Vec3 up(0.0f, 1.0f, 0.0f);
@@ -48,11 +52,10 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
     Vec3 s = forward * FOCAL_LENGTH + right * sx + up * sy;
     Vec3 dir = (s - cam_position).normalize();
 
+    Vec3 color(0.0f, 0.0f, 0.0f);
 
-    if (x < IMAGE_WIDTH && y < IMAGE_WIDTH) {
-        
+    for (int k = 0; k < NUM_SAMPLES; k++) {
         Ray ray(cam_position, dir);
-        Vec3 color(0.0f, 0.0f, 0.0f);
         Vec3 diffuseMultiplier(1.0f, 1.0f, 1.0f);
 
         for (int j = 0; j<MAX_BOUNCES; j++) {
@@ -73,10 +76,24 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                 }
             }
             if (minDistSqr < 1e9) { // hit
-                diffuseMultiplier = diffuseMultiplier * Vec3(0.1f, 0.7f, 0.1f);
-                ray.position = hitPos;
-                Vec3 newDir = ray.direction.reflect((hitNormal).normalize());
-                ray.direction = newDir;
+                if(curand_uniform(&randState) < 0.1f) { // clear coat reflection
+                    diffuseMultiplier = diffuseMultiplier * Vec3(0.95f, 0.95f, 0.95f);
+                    ray.position = hitPos;
+                    Vec3 newDir = ray.direction.reflect((hitNormal).normalize());
+                    ray.direction = newDir;
+
+                } else { // diffuse reflection
+                    diffuseMultiplier = diffuseMultiplier * Vec3(0.1f, 0.7f, 0.1f);
+                    ray.position = hitPos;
+                    Vec3 randVec = Vec3(
+                        curand_normal(&randState),
+                        curand_normal(&randState),
+                        curand_normal(&randState)
+                    );
+                    Vec3 newDir = ray.direction.reflect((hitNormal + randVec * 0.2).normalize());
+                    ray.direction = newDir;
+                }
+                
                 ray.marchForward(0.0001);
             } else {
                 // hit the emissive backdrop
@@ -93,14 +110,16 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                 break;
             }
         }
-        
-        toneMap(color);
-
-        int idx = (y * IMAGE_WIDTH + x) * 3;
-        pixels[idx + 0] = color.x;
-        pixels[idx + 1] = color.y;
-        pixels[idx + 2] = color.z;
     }
+
+    color /= static_cast<float>(NUM_SAMPLES);
+    toneMap(color);
+
+    int idx = (y * IMAGE_WIDTH + x) * 3;
+    pixels[idx + 0] = color.x;
+    pixels[idx + 1] = color.y;
+    pixels[idx + 2] = color.z;
+    
 
 }
 
