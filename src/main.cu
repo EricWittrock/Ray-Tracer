@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cuda_runtime.h>
+// #include <curand_kernel.h>
 
 #include "texture.h"
 #include "vec3.h"
@@ -8,18 +9,26 @@
 #include "sphere.h"
 #include "object.h"
 
-#define NUM_OBJECTS 1
-
-
 // __device__ Vec3 castRay(Ray& ray) {
 //     Vec3 color(0.0f, 1.0f, 0.0f);
 //     return color;
 // }
 
 __device__ void toneMap(Vec3& color) {
-    color.x = color.x / (color.x + 1.0f);
-    color.y = color.y / (color.y + 1.0f);
-    color.z = color.z / (color.z + 1.0f);
+    // exposure
+    const float exposure = -0.8f;
+    const float exposure_factor = powf(2.0f, exposure);
+
+    // ACES tone mapping
+    color.x = color.x * (color.x * 2.51f + 0.03f) / (color.x * (color.x * 2.43f + 0.59f) + 0.14f) * exposure_factor;
+    color.y = color.y * (color.y * 2.51f + 0.03f) / (color.y * (color.y * 2.43f + 0.59f) + 0.14f) * exposure_factor;
+    color.z = color.z * (color.z * 2.51f + 0.03f) / (color.z * (color.z * 2.43f + 0.59f) + 0.14f) * exposure_factor;
+
+    // gamma correction
+    const float inv_gamma = 1.0f / 2.2f;
+    color.x = powf(color.x, inv_gamma);
+    color.y = powf(color.y, inv_gamma);
+    color.z = powf(color.z, inv_gamma);
 }
 
 __global__ void render(float* pixels, Object** objects, float* envTex) {
@@ -64,7 +73,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                 }
             }
             if (minDistSqr < 1e9) { // hit
-                diffuseMultiplier = diffuseMultiplier * Vec3(0.9f, 0.7f, 0.8f);
+                diffuseMultiplier = diffuseMultiplier * Vec3(0.1f, 0.7f, 0.1f);
                 ray.position = hitPos;
                 Vec3 newDir = ray.direction.reflect((hitNormal).normalize());
                 ray.direction = newDir;
@@ -99,7 +108,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
 __global__ void initScene(Object** objects) {
     if (threadIdx.x == 0 && blockIdx.x == 0) { // TODO: is this check necessary?
         objects[0] = new Sphere(Vec3(0.0f, 0.0f, -5.0f), 2.0f);
-
+        objects[1] = new Sphere(Vec3(3.0f, 3.0f, -5.4f), 1.5f);
     }
 }
 
