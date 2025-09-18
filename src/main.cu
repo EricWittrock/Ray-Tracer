@@ -7,6 +7,7 @@
 #include "ray.h"
 #include "config.h"
 #include "sphere.h"
+#include "floor.h"
 #include "object.h"
 
 // __device__ Vec3 castRay(Ray& ray) {
@@ -48,7 +49,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
 
 
     const float sx = static_cast<float>(x + 0.5f) / IMAGE_WIDTH - 0.5f;
-    const float sy = static_cast<float>(y + 0.5f) / IMAGE_WIDTH - 0.5f;
+    const float sy = 0.5f - static_cast<float>(y + 0.5f) / IMAGE_WIDTH;
     Vec3 s = forward * FOCAL_LENGTH + right * sx + up * sy;
     Vec3 dir = (s - cam_position).normalize();
 
@@ -72,7 +73,6 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                         hitPos = pos;
                         hitNormal = normal;
                     }
-                    
                 }
             }
             if (minDistSqr < 1e9) { // hit
@@ -83,7 +83,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                     ray.direction = newDir;
 
                 } else { // diffuse reflection
-                    diffuseMultiplier = diffuseMultiplier * Vec3(0.1f, 0.7f, 0.1f);
+                    diffuseMultiplier = diffuseMultiplier * Vec3(0.1f, 0.35f, 0.1f);
                     ray.position = hitPos;
                     Vec3 randVec = Vec3(
                         curand_normal(&randState),
@@ -100,7 +100,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                 const int width = 4096;
                 const int height = 2048;
                 float backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0f * 3.14159f) + 0.5f;
-                float backdropY = asin(ray.direction.y) / (2.0f * 3.14159f) + 0.5f;
+                float backdropY = -asin(ray.direction.y) / (2.0f * 3.14159f) + 0.5f;
                 backdropX *= width;
                 backdropY *= height;
                 int envImgX = static_cast<int>(backdropX) % width; // wrap around
@@ -126,8 +126,9 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
 
 __global__ void initScene(Object** objects) {
     if (threadIdx.x == 0 && blockIdx.x == 0) { // TODO: is this check necessary?
-        objects[0] = new Sphere(Vec3(0.0f, 0.0f, -5.0f), 2.0f);
+        objects[0] = new Sphere(Vec3(0.0f, -1.2f, -5.0f), 2.0f);
         objects[1] = new Sphere(Vec3(3.0f, 3.0f, -5.4f), 1.5f);
+        objects[2] = new Floor(-3.2f);
     }
 }
 

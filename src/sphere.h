@@ -9,16 +9,16 @@ public:
     {
         Vec3 fromSphere = ray.position - center;
         // a = 1
-        double b = 2.0 * fromSphere.dot(ray.direction);
+        float b = 2.0f * fromSphere.dot(ray.direction);
         if(b > 0) { // don't hit from backwards
             return false;
         }
-        double c = fromSphere.lengthSqr() - radius * radius;
-        double d = b * b - 4 * c;
+        float c = fromSphere.lengthSqr() - radius * radius;
+        float d = b * b - 4.0f * c;
         if (d < 0) {
             return false;
         }
-        double t = (-b - sqrt(d)) / 2.0;
+        float t = (-b - sqrt(d)) / 2.0f;
         pos = ray.position + ray.direction * t;
         normal = (pos - center).normalize();
         return true;
@@ -26,5 +26,5 @@ public:
 
 private:
     Vec3 center;
-    double radius;
+    float radius;
 };
