@@ -11,9 +11,15 @@
 #define NUM_OBJECTS 1
 
 
-__device__ Vec3 castRay(Ray& ray) {
-    Vec3 color(0.0f, 1.0f, 0.0f);
-    return color;
+// __device__ Vec3 castRay(Ray& ray) {
+//     Vec3 color(0.0f, 1.0f, 0.0f);
+//     return color;
+// }
+
+__device__ void toneMap(Vec3& color) {
+    color.x = color.x / (color.x + 1.0f);
+    color.y = color.y / (color.y + 1.0f);
+    color.z = color.z / (color.z + 1.0f);
 }
 
 __global__ void render(float* pixels, Object** objects, float* envTex) {
@@ -35,29 +41,52 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
 
 
     if (x < IMAGE_WIDTH && y < IMAGE_WIDTH) {
+        
         Ray ray(cam_position, dir);
-        // Vec3 color = castRay(ray);
-        Vec3 color(0.0f, 1.0f, 0.0f);
+        Vec3 color(0.0f, 0.0f, 0.0f);
+        Vec3 diffuseMultiplier(1.0f, 1.0f, 1.0f);
 
-        const int width = 4096;
-        const int height = 2048;
-        double backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0 * 3.14159) + 0.5;
-        double backdropY = -asin(ray.direction.y) / (2.0 * 3.14159) + 0.5;
-        backdropX *= width;
-        backdropY *= height;
-        int envImgX = static_cast<int>(backdropX) % width; // wrap around
-        int envImgY = static_cast<int>(backdropY) % height;
-        int envI = (envImgY * width + envImgX) * 3;
-        color = Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]);
-
-        for (int i = 0; i < NUM_OBJECTS; i++) {
-            Vec3 pos;
-            Vec3 normal;
-            if (objects[i]->intersection(ray, pos, normal)) {
-                color = Vec3(1.0f, 0.0f, 0.0f);
+        for (int j = 0; j<MAX_BOUNCES; j++) {
+            float minDistSqr = 1e9;
+            Vec3 hitPos;
+            Vec3 hitNormal;
+            for (int i = 0; i < NUM_OBJECTS; i++) {
+                Vec3 pos;
+                Vec3 normal;
+                if (objects[i]->intersection(ray, pos, normal)) {
+                    float newDistSqr = (pos - ray.position).lengthSqr();
+                    if (newDistSqr < minDistSqr) {
+                        minDistSqr = newDistSqr;
+                        hitPos = pos;
+                        hitNormal = normal;
+                    }
+                    
+                }
+            }
+            if (minDistSqr < 1e9) { // hit
+                diffuseMultiplier = diffuseMultiplier * Vec3(0.9f, 0.7f, 0.8f);
+                ray.position = hitPos;
+                Vec3 newDir = ray.direction.reflect((hitNormal).normalize());
+                ray.direction = newDir;
+                ray.marchForward(0.0001);
+            } else {
+                // hit the emissive backdrop
+                const int width = 4096;
+                const int height = 2048;
+                float backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0f * 3.14159f) + 0.5f;
+                float backdropY = asin(ray.direction.y) / (2.0f * 3.14159f) + 0.5f;
+                backdropX *= width;
+                backdropY *= height;
+                int envImgX = static_cast<int>(backdropX) % width; // wrap around
+                int envImgY = static_cast<int>(backdropY) % height;
+                int envI = (envImgY * width + envImgX) * 3;
+                color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * diffuseMultiplier * 1.0f;
+                break;
             }
         }
         
+        toneMap(color);
+
         int idx = (y * IMAGE_WIDTH + x) * 3;
         pixels[idx + 0] = color.x;
         pixels[idx + 1] = color.y;
