@@ -1,4 +1,6 @@
 #pragma once
+
+#include "material.h"
 #include "object.h"
 
 class Sphere : public Object {
@@ -27,4 +29,5 @@ public:
 private:
     Vec3 center;
     float radius;
+    Material material;
 };

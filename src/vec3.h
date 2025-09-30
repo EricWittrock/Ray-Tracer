@@ -1,7 +1,7 @@
 #pragma once
 #include <cmath>
-#include <cstdlib>
-#include <random>
+// #include <cstdlib>
+// #include <random>
 
 #ifndef __CUDACC__
 #define __host__

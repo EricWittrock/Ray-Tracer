@@ -9,6 +9,8 @@
 #include "sphere.h"
 #include "floor.h"
 #include "object.h"
+#include "modelLoader.h"
+#include "triangle.h"
 
 // __device__ Vec3 castRay(Ray& ray) {
 //     Vec3 color(0.0f, 1.0f, 0.0f);
@@ -63,6 +65,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
             float minDistSqr = 1e9;
             Vec3 hitPos;
             Vec3 hitNormal;
+            Object *hitObject = nullptr;
             for (int i = 0; i < NUM_OBJECTS; i++) {
                 Vec3 pos;
                 Vec3 normal;
@@ -72,10 +75,15 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                         minDistSqr = newDistSqr;
                         hitPos = pos;
                         hitNormal = normal;
+                        hitObject = objects[i];
                     }
                 }
             }
-            if (minDistSqr < 1e9) { // hit
+            if (hitObject != nullptr) { // hit
+                // hitObject->material.reflect(ray, hitNormal, hitPos, &randState);
+                // hitObject->material.reflect(ray, hitNormal, hitPos);
+
+                
                 if(curand_uniform(&randState) < 0.1f) { // clear coat reflection
                     diffuseMultiplier = diffuseMultiplier * Vec3(0.95f, 0.95f, 0.95f);
                     ray.position = hitPos;
@@ -94,7 +102,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
                     ray.direction = newDir;
                 }
                 
-                ray.marchForward(0.0001);
+                // ray.marchForward(0.0001);
             } else {
                 // hit the emissive backdrop
                 const int width = 4096;
@@ -135,6 +143,10 @@ __global__ void initScene(Object** objects) {
 
 int main(int argc, char** argv) 
 {
+    Triangle* tris = nullptr;
+    int numTris = 0;
+    loadModel("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj", tris, numTris);
+
     Object **objects;
     cudaMalloc((void **)&objects, NUM_OBJECTS * sizeof(Object*));
     initScene<<<1, 1>>>(objects);
