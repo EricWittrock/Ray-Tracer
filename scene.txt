@@ -1,0 +1,41 @@
+SET_IMAGE_WIDTH 256
+SET_NUM_SAMPLES 250
+SET_MAX_BOUNCES 6
+SET_CAM_POS 0.0 0.0 0.0
+SET_CAM_FORWARD 0.0 0.0 1.0
+#TODO: SET_CAM_LOOK_AT
+SET_CAM_LOOK_AT 0.0 100.0 0.0
+SET_FOCAL_LENGTH 0.3
+
+DEF_IMAGE backgroundTexture "C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr"
+DEF_MODEL monkeyModel C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj
+
+# todo: ALBEDO NOISE <PARAMS>
+
+DEF_MATERIAL mat1
+ALBEDO COLOR 0.0 1.0 0.5
+ROUGHNESS IMAGE backgroundTexture
+NORMAL IMAGE backgroundTexture
+END
+
+DEF_OBJ sphere1
+MODEL SPHERE
+MATERIAL mat1
+POSITION 1.0 1.0 1.0
+ORIENTATION 1.0 0.0 0.0 0.0
+SCALE 1.0
+END
+
+DEF_OBJ obj2
+MODEL monkeyModel
+MATERIAL mat1
+POSITION 1.0 1.0 1.0
+ORIENTATION 1.0 0.0 0.0 0.0
+SCALE 1.0
+END
+
+
+# SET_BACKGROUND <image, color, or noise>
+SET_BACKGROUND backgroundTexture
+
+SET_OBJETS sphere1 sphere1 obj2

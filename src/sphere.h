@@ -5,7 +5,7 @@
 
 class Sphere : public Object {
 public:
-    __device__ Sphere(const Vec3& center, double radius) : center(center), radius(radius) {}
+    __host__ __device__ Sphere(const Vec3& center, double radius) : center(center), radius(radius) {}
 
     __device__ bool intersection(const Ray& ray, Vec3& pos, Vec3& normal) const 
     {

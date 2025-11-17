@@ -31,4 +31,6 @@ public:
         v1 = t.v1;
         v2 = t.v2;
     }
+
+    // TODO: static operators to act on an array
 };
