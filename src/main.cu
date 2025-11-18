@@ -138,7 +138,7 @@ __device__ bool rayTriangleIntersect(Ray& ray, const Vec3& v0, const Vec3& v1, c
     Vec3 ray_cross_e2 = ray.direction.cross(edge2);
 
     float det = edge1.dot(ray_cross_e2);
-    if (det > -epsilon && det < epsilon) { // parallel
+    if (det > -epsilon && det < epsilon) { // ray is parallel to triangle plane
         return false; 
     }
 
@@ -160,6 +160,26 @@ __device__ bool rayTriangleIntersect(Ray& ray, const Vec3& v0, const Vec3& v1, c
     } else {
         return false;
     }
+}
+
+__device__ Vec3 barycentric(const Vec3& a, const Vec3& b, const Vec3& c, const Vec3& pos) {
+    Vec3 v0 = b - a;
+    Vec3 v1 = c - a;
+    Vec3 v2 = pos - a;
+    float d00 = v0.dot(v0);
+    float d01 = v0.dot(v1);
+    float d11 = v1.dot(v1);
+    float d20 = v2.dot(v0);
+    float d21 = v2.dot(v1);
+    float denom = d00 * d11 - d01 * d01;
+    float v = (d11 * d20 - d01 * d21) / denom;
+    float w = (d00 * d21 - d01 * d20) / denom;
+    float u = 1.0f - v - w;
+    return Vec3(u, v, w);
+}
+
+__device__ Vec3 interpolateNormal(const Vec3& n0, const Vec3& n1, const Vec3& n2, const Vec3& bary) {
+    return (n0 * bary.x + n1 * bary.y + n2 * bary.z).normalize();
 }
 
 __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) {
@@ -194,9 +214,9 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
             int hitTriIndex = -1;
             float minDistSqr = 1e12;
             for (int i = 0; i < numTris; i++) {
-                Vec3 v0(tris[i * 9 + 0], tris[i * 9 + 1], tris[i * 9 + 2]);
-                Vec3 v1(tris[i * 9 + 3], tris[i * 9 + 4], tris[i * 9 + 5]);
-                Vec3 v2(tris[i * 9 + 6], tris[i * 9 + 7], tris[i * 9 + 8]);
+                Vec3 v0(tris[i * 24 + 0], tris[i * 24 + 1], tris[i * 24 + 2]);
+                Vec3 v1(tris[i * 24 + 3], tris[i * 24 + 4], tris[i * 24 + 5]);
+                Vec3 v2(tris[i * 24 + 6], tris[i * 24 + 7], tris[i * 24 + 8]);
                 
                 Vec3 pos;
                 if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
@@ -209,12 +229,20 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
                 }
             }
             if (hitTriIndex >= 0) { // hit
-                Vec3 v0(tris[hitTriIndex * 9 + 0], tris[hitTriIndex * 9 + 1], tris[hitTriIndex * 9 + 2]);
-                Vec3 v1(tris[hitTriIndex * 9 + 3], tris[hitTriIndex * 9 + 4], tris[hitTriIndex * 9 + 5]);
-                Vec3 v2(tris[hitTriIndex * 9 + 6], tris[hitTriIndex * 9 + 7], tris[hitTriIndex * 9 + 8]);
-                Vec3 edge1 = v1 - v0;
-                Vec3 edge2 = v2 - v0;
-                Vec3 hitNormal = edge1.cross(edge2).normalize();
+                Vec3 v0(tris[hitTriIndex * 24 + 0], tris[hitTriIndex * 24 + 1], tris[hitTriIndex * 24 + 2]);
+                Vec3 v1(tris[hitTriIndex * 24 + 3], tris[hitTriIndex * 24 + 4], tris[hitTriIndex * 24 + 5]);
+                Vec3 v2(tris[hitTriIndex * 24 + 6], tris[hitTriIndex * 24 + 7], tris[hitTriIndex * 24 + 8]);
+
+                Vec3 n0(tris[hitTriIndex * 24 + 9], tris[hitTriIndex * 24 + 10], tris[hitTriIndex * 24 + 11]);
+                Vec3 n1(tris[hitTriIndex * 24 + 12], tris[hitTriIndex * 24 + 13], tris[hitTriIndex * 24 + 14]);
+                Vec3 n2(tris[hitTriIndex * 24 + 15], tris[hitTriIndex * 24 + 16], tris[hitTriIndex * 24 + 17]);
+
+                Vec3 bary = barycentric(v0, v1, v2, hitPos);
+                Vec3 hitNormal = interpolateNormal(n0, n1, n2, bary);
+
+                // Vec3 edge1 = v1 - v0;
+                // Vec3 edge2 = v2 - v0;
+                // Vec3 hitNormal = edge1.cross(edge2).normalize();
                 
                 if(curand_uniform(&randState) < 0.1f) { // clear coat reflection
                     diffuseMultiplier = diffuseMultiplier * Vec3(0.95f, 0.95f, 0.95f);
@@ -230,7 +258,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
                         curand_normal(&randState),
                         curand_normal(&randState)
                     );
-                    Vec3 newDir = ray.direction.reflect((hitNormal + randVec * 0.2f).normalize());
+                    Vec3 newDir = ray.direction.reflect((hitNormal + randVec * 0.1f).normalize());
                     ray.direction = newDir;
                 }
                 
@@ -289,7 +317,7 @@ int main(int argc, char** argv)
 {
 
     Model model;
-    model.loadMesh("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj", Vec3(-1.5f, -1.0f, -3.0f));
+    model.loadMesh("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey2.obj", Vec3(-0.5f, -0.3f, -2.0f));
 
     float *gpuTris;
     cudaMalloc((void **)&gpuTris, model.getSizeBytes());

@@ -99,10 +99,23 @@ public:
             int v0_idx = (tri_indices[i] - 1) * 3;
             int v1_idx = (tri_indices[i + 1] - 1) * 3;
             int v2_idx = (tri_indices[i + 2] - 1) * 3;
-
             Vec3 v0(verts[v0_idx], verts[v0_idx + 1], verts[v0_idx + 2]);
             Vec3 v1(verts[v1_idx], verts[v1_idx + 1], verts[v1_idx + 2]);
             Vec3 v2(verts[v2_idx], verts[v2_idx + 1], verts[v2_idx + 2]);
+
+            int n0_idx = (tri_indices[i + 3] - 1) * 3;
+            int n1_idx = (tri_indices[i + 4] - 1) * 3;
+            int n2_idx = (tri_indices[i + 5] - 1) * 3;
+            Vec3 n0(norms[n0_idx], norms[n0_idx + 1], norms[n0_idx + 2]);
+            Vec3 n1(norms[n1_idx], norms[n1_idx + 1], norms[n1_idx + 2]);
+            Vec3 n2(norms[n2_idx], norms[n2_idx + 1], norms[n2_idx + 2]);
+
+            int t0_idx = (tri_indices[i + 6] - 1) * 2;
+            int t1_idx = (tri_indices[i + 7] - 1) * 2;
+            int t2_idx = (tri_indices[i + 8] - 1) * 2;
+            Vec3 uv0(uvs[t0_idx], uvs[t0_idx + 1], 0);
+            Vec3 uv1(uvs[t1_idx], uvs[t1_idx + 1], 0);
+            Vec3 uv2(uvs[t2_idx], uvs[t2_idx + 1], 0);
 
             tris.push_back(v0.x);
             tris.push_back(v0.y);
@@ -113,6 +126,23 @@ public:
             tris.push_back(v2.x);
             tris.push_back(v2.y);
             tris.push_back(v2.z);
+
+            tris.push_back(n0.x);
+            tris.push_back(n0.y);
+            tris.push_back(n0.z);
+            tris.push_back(n1.x);
+            tris.push_back(n1.y);
+            tris.push_back(n1.z);
+            tris.push_back(n2.x);
+            tris.push_back(n2.y);
+            tris.push_back(n2.z);
+
+            tris.push_back(uv0.x);
+            tris.push_back(uv0.y);
+            tris.push_back(uv1.x);
+            tris.push_back(uv1.y);
+            tris.push_back(uv2.x);
+            tris.push_back(uv2.y);
         }
 
         facesLength = tris.size();
