@@ -20,12 +20,16 @@ public:
     unsigned short image_height;
 
     __host__ __device__ Material()
-        : albedo(0xFFFFFF),
+        : type(0),
+        albedo(0xFFFFFF),
         roughness(0.0f),
         metallic(0.0f),
         ior(1.5f),
         specular(0.5f),
-        image_offset(-1),
+        emission(0.0f),
+        image1_offset(-1),
+        image2_offset(-1),
+        image3_offset(-1),
         image_width(0),
         image_height(0)
      {}
@@ -55,9 +59,5 @@ public:
     //     return Vec3(0.1f, 0.35f, 0.1f);
     // };
 
-    __device__ Vec3 reflect(Ray& ray, const Vec3& normal, const Vec3& pos) const;
-
-    Vec3 color = Vec3(1.0, 1.0, 1.0);
-    double roughness = 0.0;
-    
+    // __device__ Vec3 reflect(Ray& ray, const Vec3& normal, const Vec3& pos) const;
 };

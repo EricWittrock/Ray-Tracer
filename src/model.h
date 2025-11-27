@@ -43,10 +43,8 @@ public:
         return getDataLength() * sizeof(float);
     }
 
-    __host__ void loadMesh(const char* filename, Vec3& translation) 
+    __host__ void loadMesh(const char* filename, Vec3& translation, int materialIndex) 
     {
-        std::cout << "before all" << std::endl;
-
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cout << "Could not open model file: " << filename << std::endl;
@@ -59,8 +57,6 @@ public:
         std::vector<float> uvs;
         std::vector<int> tri_indices;
         std::vector<float> tris;
-
-        std::cout << "before while" << std::endl;
 
         while (std::getline(file, line)) {
             const char c0 = line[0];
@@ -103,11 +99,7 @@ public:
             }
         }
 
-        std::cout << "after while" << std::endl;
-
         file.close();
-
-        std::cout << "after close" << std::endl;
 
         for (size_t i = 0; i < tri_indices.size(); i += 9) {
             int v0_idx = (tri_indices[i] - 1) * 3;
@@ -157,10 +149,11 @@ public:
             tris.push_back(uv1.y);
             tris.push_back(uv2.x);
             tris.push_back(uv2.y);
+
+            tris.push_back(static_cast<float>(materialIndex) + 0.001);
         }
 
         facesLength = tris.size();
-        std::cout << "facesLength: " << facesLength << std::endl;
         if (faces) {
             delete[] faces;
             faces = nullptr;
@@ -173,7 +166,5 @@ public:
         } else {
             faces = nullptr;
         }
-        faces[facesLength] = 123.0f;
-        std::cout << "done: " << facesLength << std::endl;
     }
 };

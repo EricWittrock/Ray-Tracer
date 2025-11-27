@@ -11,6 +11,7 @@
 #include "object.h"
 #include "model.h"
 #include "sceneParser.h"
+#include "material.h"
 
 // __device__ Vec3 castRay(Ray& ray) {
 //     Vec3 color(0.0f, 1.0f, 0.0f);
@@ -183,7 +184,7 @@ __device__ Vec3 interpolateNormal(const Vec3& n0, const Vec3& n1, const Vec3& n2
     return (n0 * bary.x + n1 * bary.y + n2 * bary.z).normalize();
 }
 
-__global__ void render2(float* pixels, float* tris, int numTris, float* envTex) {
+__global__ void render2(float* pixels, float* tris, int numTris, Material *materials, float* envTex) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= IMAGE_WIDTH || y >= IMAGE_WIDTH) return;
@@ -214,7 +215,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
             Vec3 hitPos;
             int hitTriIndex = -1;
             float minDistSqr = 1e12;
-            for (int i = 0; i < numTris; i+=24) {
+            for (int i = 0; i < numTris; i+=25) {
                 Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
                 Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
                 Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
@@ -240,6 +241,14 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
                 Vec3 bary = barycentric(v0, v1, v2, hitPos);
                 Vec3 hitNormal = interpolateNormal(n0, n1, n2, bary);
 
+                int hitIndex = static_cast<int>(tris[hitTriIndex + 24]);
+                Material hitMaterial = materials[hitIndex];
+                
+                Vec3 color(0.0f, 1.0f, 0.0f);
+                if (hitMaterial.type == 1) {
+                    color = Vec3(1.0f, 0.0f, 0.0f);
+                }
+
                 // Vec3 edge1 = v1 - v0;
                 // Vec3 edge2 = v2 - v0;
                 // Vec3 hitNormal = edge1.cross(edge2).normalize();
@@ -251,7 +260,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
                     ray.direction = newDir;
 
                 } else { // diffuse reflection
-                    diffuseMultiplier = diffuseMultiplier * Vec3(0.1f, 0.35f, 0.1f);
+                    diffuseMultiplier = diffuseMultiplier * color;
                     ray.position = hitPos;
                     Vec3 randVec = Vec3(
                         curand_normal(&randState),
@@ -315,26 +324,22 @@ void loadAssets() {
 
 int main(int argc, char** argv) 
 {
-    std::cout << "c1" << std::endl;
     SceneParser parser;
     parser.parseFromFile("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\scene.txt");
-    std::cout << "c2" << std::endl;
-    // Model model;
-    // model.loadMesh("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey2.obj", Vec3(-0.5f, -0.3f, -2.0f));
 
-    float *cpuTris;
+    const float *cpuTris;
     size_t numTris;
-    parser.getTriangleData((const float**)&cpuTris, &numTris);
-    std::cout << "c3" << std::endl;
-
+    parser.getTriangleData(&cpuTris, &numTris);
     float *gpuTris;
     cudaMalloc((void **)&gpuTris, numTris * sizeof(float));
     cudaMemcpy(gpuTris, cpuTris, numTris * sizeof(float), cudaMemcpyKind::cudaMemcpyHostToDevice);
-    std::cout << "c4, " << numTris << std::endl;
 
-    // Object **objects;
-    // cudaMalloc((void **)&objects, NUM_OBJECTS * sizeof(Object*));
-    // initScene<<<1, 1>>>(objects);
+    const Material *materials;
+    size_t numMaterials;
+    parser.getMaterialData(&materials, &numMaterials);
+    Material *gpuMaterials;
+    cudaMalloc((void **)&gpuMaterials, numMaterials * sizeof(Material));
+    cudaMemcpy(gpuMaterials, materials, numMaterials * sizeof(Material), cudaMemcpyKind::cudaMemcpyHostToDevice);
 
     size_t img_bytes = IMAGE_WIDTH * IMAGE_WIDTH * 3 * sizeof(float);
     float* pixels;
@@ -344,12 +349,12 @@ int main(int argc, char** argv)
     float* gpuEnvTex;
     cudaMalloc(&gpuEnvTex, environmentMap.sizeBytes());
     cudaMemcpy(gpuEnvTex, environmentMap.getData(), environmentMap.sizeBytes(), cudaMemcpyKind::cudaMemcpyHostToDevice);
-    std::cout << "env: " << environmentMap.width << "x" << environmentMap.height << "\n";
+    std::cout << "env texture size: " << environmentMap.width << "x" << environmentMap.height << "\n";
 
     dim3 block(16, 16);
     dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x, (IMAGE_WIDTH + block.y - 1) / block.y);
     std::cout << "begin rendering" << std::endl;
-    render2<<<grid, block>>>(pixels, gpuTris, static_cast<int>(numTris), gpuEnvTex);
+    render2<<<grid, block>>>(pixels, gpuTris, static_cast<int>(numTris), gpuMaterials, gpuEnvTex);
     cudaDeviceSynchronize();
     std::cout << "done rendering" << std::endl;
 

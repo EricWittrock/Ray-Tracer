@@ -31,6 +31,12 @@ COLOR 0.0 1.0 0.5
 #ROUGHNESS IMAGE backgroundTexture
 #NORMAL IMAGE backgroundTexture
 
+DEF_MATERIAL mat2
+TYPE 1
+COLOR 0.0 1.0 0.5
+#ROUGHNESS IMAGE backgroundTexture
+#NORMAL IMAGE backgroundTexture
+
 DEF_OBJ sphere1
 #MODEL SPHERE
 MODEL monkeyModel
@@ -38,7 +44,7 @@ MATERIAL mat1
 
 DEF_OBJ obj2
 MODEL monkeyModel
-MATERIAL mat1
+MATERIAL mat2
 
 DEF_OBJ obj3
 MODEL cubeModel

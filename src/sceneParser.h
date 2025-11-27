@@ -4,6 +4,7 @@
 #include "vector"
 #include <fstream>
 #include <string>
+#include "material.h"
 
 namespace SceneAssets
 {
@@ -18,7 +19,7 @@ namespace SceneAssets
     };
     struct Material {
         std::string name;
-        int type;
+        char type;
         Vec3 albedo;
     };
     struct Object {
@@ -77,5 +78,8 @@ public:
     SceneAssets::Material* getMaterialByName(std::string name);
     SceneAssets::Object* getObjectByName(std::string name);
     SceneAssets::ObjectInstance* getObjectInstanceByName(std::string name);
+    int getMaterialIndexByName(std::string name);
+
     void getTriangleData(const float** tris, size_t* num_tris);
+    void getMaterialData(const Material** materials, size_t* num_materials);
 };

@@ -175,7 +175,7 @@ void SceneParser::parseLineMaterialDef(const std::string& line, const std::strin
     std::string first_word = nth_word(line, 0);
 
     if (first_word == "TYPE") {
-        material->type = std::stoi(nth_word(line, 1));
+        material->type = static_cast<char>(std::stoi(nth_word(line, 1)));
     } else if(first_word == "COLOR") {
         material->albedo = Vec3(
             std::stof(nth_word(line, 1)),
@@ -206,7 +206,6 @@ void SceneParser::parseLineObjectDef(const std::string& line, const std::string&
 }
 
 void SceneParser::parseLineObjectInstance(const std::string& line, const std::string& name) {
-    std::cout << "test" << std::endl;
     SceneAssets::ObjectInstance* object_instance = getObjectInstanceByName(name);
     std::string first_word = nth_word(line, 0);
     if(first_word == "OBJECT") {
@@ -279,6 +278,16 @@ SceneAssets::Material* SceneParser::getMaterialByName(std::string name) {
     exit(1);
 }
 
+int SceneParser::getMaterialIndexByName(std::string name) {
+    for (int i = 0; i < materials.size(); i++) {
+        if (materials[i].name == name) {
+            return i;
+        }
+    }
+    std::cout << "Material not found: " << name << std::endl;
+    exit(1);
+}
+
 SceneAssets::Object* SceneParser::getObjectByName(std::string name) {
     for (auto& object : objects) {
         if (object.name == name) {
@@ -299,17 +308,18 @@ SceneAssets::ObjectInstance* SceneParser::getObjectInstanceByName(std::string na
     exit(1);
 }
 
-void SceneParser::getTriangleData(const float** tris, size_t* arr_len) {    
+void SceneParser::getTriangleData(const float** tris, size_t* arr_len) {  
     std::vector<Model> models;
 
     std::cout << "Number of object instances: " << object_instances.size() << std::endl;
     for (auto& object_instance : object_instances) {
         std::string object_name = object_instance.object_name;
         SceneAssets::Object* object = getObjectByName(object_name);
+        int materialIndex = getMaterialIndexByName(object->material_id);
         std::string model_name = object->model_name;
         SceneAssets::Model* model_info = getModelByName(model_name);
         Model model;
-        model.loadMesh(model_info->path.c_str(), object_instance.position);
+        model.loadMesh(model_info->path.c_str(), object_instance.position, materialIndex);
         models.push_back(std::move(model));
     }
 
@@ -323,20 +333,25 @@ void SceneParser::getTriangleData(const float** tris, size_t* arr_len) {
     float *all_tris = new float[total_length];
     size_t offset = 0;
     for (auto& model : models) {
-        std::cout << "getting model faces" << std::endl;
         float* model_tris = model.getFaces();
-        std::cout << "Model length: " << model.getDataLength() << std::endl;
         size_t model_length = model.getDataLength();
-        std::cout << "Copying model triangle data at offset: " << offset << std::endl;
         std::memcpy(all_tris + offset, model_tris, model_length * sizeof(float));
         offset += model_length;
-        std::cout << "Copied model triangle data at offset: " << offset << std::endl;
     }
-
-    std::cout << "cp1" << std::endl;
     
-
     *tris = all_tris;
     *arr_len = total_length;
 }
 
+void SceneParser::getMaterialData(const Material** out_materials, size_t* num_materials) {
+    size_t count = materials.size();
+    Material* material_array = new Material[count];
+
+    for (int i = 0; i < count; i++) {
+        material_array[i].type = materials[i].type;
+        // material_array[i].albedo = this->materials[i].albedo;
+    }
+
+    *out_materials = material_array;
+    *num_materials = count;
+}
