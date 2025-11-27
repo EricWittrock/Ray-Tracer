@@ -6,6 +6,30 @@
 
 class Material {
 public:
+    char type; // 0 = diffuse, 1 = metal, 2 = dielectric, 3 = emissive, 4 = ...
+    int albedo;
+    float roughness;
+    float metallic;
+    float ior;
+    float specular;
+    float emission;
+    int image1_offset;
+    int image2_offset;
+    int image3_offset;
+    unsigned short image_width;
+    unsigned short image_height;
+
+    __host__ __device__ Material()
+        : albedo(0xFFFFFF),
+        roughness(0.0f),
+        metallic(0.0f),
+        ior(1.5f),
+        specular(0.5f),
+        image_offset(-1),
+        image_width(0),
+        image_height(0)
+     {}
+
     // __device__ Vec3 reflect(Ray& ray, const Vec3& normal, const Vec3& pos, curandState* randState) const
     // {
     //     if(curand_uniform(randState) < 0.1f) { // clear coat reflection

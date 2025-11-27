@@ -11,7 +11,7 @@
 class Model {
 private:
     float* faces;
-    unsigned int facesLength;
+    size_t facesLength;
 public:
     __host__ Model() : faces(nullptr), facesLength(0) {}
 
@@ -19,6 +19,12 @@ public:
         if (faces) {
             delete[] faces;
         }
+    }
+
+    // use with std::move
+    Model(Model&& other) : faces(other.faces), facesLength(other.facesLength) {
+        other.faces = nullptr;
+        other.facesLength = 0;
     }
 
     __host__ float* getFaces() const {
@@ -37,12 +43,14 @@ public:
         return getDataLength() * sizeof(float);
     }
 
-    __host__ void loadMesh(const char* filename, Vec3 translation) 
+    __host__ void loadMesh(const char* filename, Vec3& translation) 
     {
+        std::cout << "before all" << std::endl;
+
         std::ifstream file(filename);
         if (!file.is_open()) {
-            std::cerr << "Error reading file: " << filename << std::endl;
-            return;
+            std::cout << "Could not open model file: " << filename << std::endl;
+            exit(1);
         }
         std::string line;
 
@@ -51,6 +59,8 @@ public:
         std::vector<float> uvs;
         std::vector<int> tri_indices;
         std::vector<float> tris;
+
+        std::cout << "before while" << std::endl;
 
         while (std::getline(file, line)) {
             const char c0 = line[0];
@@ -93,9 +103,13 @@ public:
             }
         }
 
+        std::cout << "after while" << std::endl;
+
         file.close();
 
-        for (int i = 0; i < tri_indices.size(); i += 9) {
+        std::cout << "after close" << std::endl;
+
+        for (size_t i = 0; i < tri_indices.size(); i += 9) {
             int v0_idx = (tri_indices[i] - 1) * 3;
             int v1_idx = (tri_indices[i + 1] - 1) * 3;
             int v2_idx = (tri_indices[i + 2] - 1) * 3;
@@ -146,9 +160,20 @@ public:
         }
 
         facesLength = tris.size();
-        faces = new float[facesLength];
-        for (size_t i = 0; i < facesLength; i++) {
-            faces[i] = tris[i];
+        std::cout << "facesLength: " << facesLength << std::endl;
+        if (faces) {
+            delete[] faces;
+            faces = nullptr;
         }
+        if (facesLength > 0) {
+            faces = new float[facesLength];
+            for (size_t i = 0; i < facesLength; i++) {
+                faces[i] = tris[i];
+            }
+        } else {
+            faces = nullptr;
+        }
+        faces[facesLength] = 123.0f;
+        std::cout << "done: " << facesLength << std::endl;
     }
 };

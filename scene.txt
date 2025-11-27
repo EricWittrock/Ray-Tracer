@@ -1,41 +1,66 @@
 SET_IMAGE_WIDTH 256
 SET_NUM_SAMPLES 250
 SET_MAX_BOUNCES 6
+SET_FOCAL_LENGTH 0.3
+#SET_CAM_FORWARD 0.0 0.0 1.0
 SET_CAM_POS 0.0 0.0 0.0
-SET_CAM_FORWARD 0.0 0.0 1.0
 #TODO: SET_CAM_LOOK_AT
 SET_CAM_LOOK_AT 0.0 100.0 0.0
-SET_FOCAL_LENGTH 0.3
 
-DEF_IMAGE backgroundTexture "C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr"
-DEF_MODEL monkeyModel C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj
+DEF_IMAGE backgroundTexture 
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
+
+DEF_IMAGE backgroundTexture 
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
+
+
+DEF_MODEL monkeyModel
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj
+MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.mtl
+
+DEF_MODEL cubeModel
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.obj
+MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.mtl
+
 
 # todo: ALBEDO NOISE <PARAMS>
 
 DEF_MATERIAL mat1
-ALBEDO COLOR 0.0 1.0 0.5
-ROUGHNESS IMAGE backgroundTexture
-NORMAL IMAGE backgroundTexture
-END
+TYPE 0
+COLOR 0.0 1.0 0.5
+#ROUGHNESS IMAGE backgroundTexture
+#NORMAL IMAGE backgroundTexture
 
 DEF_OBJ sphere1
-MODEL SPHERE
+#MODEL SPHERE
+MODEL monkeyModel
 MATERIAL mat1
-POSITION 1.0 1.0 1.0
-ORIENTATION 1.0 0.0 0.0 0.0
-SCALE 1.0
-END
 
 DEF_OBJ obj2
 MODEL monkeyModel
 MATERIAL mat1
-POSITION 1.0 1.0 1.0
-ORIENTATION 1.0 0.0 0.0 0.0
-SCALE 1.0
-END
 
+DEF_OBJ obj3
+MODEL cubeModel
+MATERIAL mat1
 
 # SET_BACKGROUND <image, color, or noise>
 SET_BACKGROUND backgroundTexture
 
-SET_OBJETS sphere1 sphere1 obj2
+ADD_OBJECT someobj1
+OBJECT obj3
+POSITION -0.5 -2.3 -3.0
+#ORIENTATION 1.0 0.0 0.0 0.0
+SCALE 1.0
+
+ADD_OBJECT someobj2
+OBJECT obj2
+POSITION -1.5 -0.3 -5.0
+#ORIENTATION 1.0 0.0 0.0 0.0
+SCALE 1.0
+
+#ADD_OBJECT someobj3
+#OBJECT obj2
+#POSITION 0.0 -1.0 1.0
+#ORIENTATION 1.0 0.0 0.0 0.0
+#SCALE 1.0

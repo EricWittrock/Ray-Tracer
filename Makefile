@@ -3,6 +3,8 @@ SRC_CPP = $(wildcard src/*.cpp)
 SRC_CU = $(wildcard src/*.cu)
 OUT = build/main.exe
 
+NVCC_FLAGS = -O0 -g -Xptxas -O0 -Xcompiler "/Od /W4 /Zi"
+
 all: build run
 
 build: $(OUT)

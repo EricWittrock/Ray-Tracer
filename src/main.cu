@@ -10,6 +10,7 @@
 #include "floor.h"
 #include "object.h"
 #include "model.h"
+#include "sceneParser.h"
 
 // __device__ Vec3 castRay(Ray& ray) {
 //     Vec3 color(0.0f, 1.0f, 0.0f);
@@ -213,10 +214,10 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
             Vec3 hitPos;
             int hitTriIndex = -1;
             float minDistSqr = 1e12;
-            for (int i = 0; i < numTris; i++) {
-                Vec3 v0(tris[i * 24 + 0], tris[i * 24 + 1], tris[i * 24 + 2]);
-                Vec3 v1(tris[i * 24 + 3], tris[i * 24 + 4], tris[i * 24 + 5]);
-                Vec3 v2(tris[i * 24 + 6], tris[i * 24 + 7], tris[i * 24 + 8]);
+            for (int i = 0; i < numTris; i+=24) {
+                Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
+                Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
+                Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
                 
                 Vec3 pos;
                 if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
@@ -229,14 +230,13 @@ __global__ void render2(float* pixels, float* tris, int numTris, float* envTex) 
                 }
             }
             if (hitTriIndex >= 0) { // hit
-                Vec3 v0(tris[hitTriIndex * 24 + 0], tris[hitTriIndex * 24 + 1], tris[hitTriIndex * 24 + 2]);
-                Vec3 v1(tris[hitTriIndex * 24 + 3], tris[hitTriIndex * 24 + 4], tris[hitTriIndex * 24 + 5]);
-                Vec3 v2(tris[hitTriIndex * 24 + 6], tris[hitTriIndex * 24 + 7], tris[hitTriIndex * 24 + 8]);
+                Vec3 v0(tris[hitTriIndex + 0], tris[hitTriIndex + 1], tris[hitTriIndex + 2]);
+                Vec3 v1(tris[hitTriIndex + 3], tris[hitTriIndex + 4], tris[hitTriIndex + 5]);
+                Vec3 v2(tris[hitTriIndex + 6], tris[hitTriIndex + 7], tris[hitTriIndex + 8]);
 
-                Vec3 n0(tris[hitTriIndex * 24 + 9], tris[hitTriIndex * 24 + 10], tris[hitTriIndex * 24 + 11]);
-                Vec3 n1(tris[hitTriIndex * 24 + 12], tris[hitTriIndex * 24 + 13], tris[hitTriIndex * 24 + 14]);
-                Vec3 n2(tris[hitTriIndex * 24 + 15], tris[hitTriIndex * 24 + 16], tris[hitTriIndex * 24 + 17]);
-
+                Vec3 n0(tris[hitTriIndex + 9], tris[hitTriIndex + 10], tris[hitTriIndex + 11]);
+                Vec3 n1(tris[hitTriIndex + 12], tris[hitTriIndex + 13], tris[hitTriIndex + 14]);
+                Vec3 n2(tris[hitTriIndex + 15], tris[hitTriIndex + 16], tris[hitTriIndex + 17]);
                 Vec3 bary = barycentric(v0, v1, v2, hitPos);
                 Vec3 hitNormal = interpolateNormal(n0, n1, n2, bary);
 
@@ -315,18 +315,26 @@ void loadAssets() {
 
 int main(int argc, char** argv) 
 {
+    std::cout << "c1" << std::endl;
+    SceneParser parser;
+    parser.parseFromFile("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\scene.txt");
+    std::cout << "c2" << std::endl;
+    // Model model;
+    // model.loadMesh("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey2.obj", Vec3(-0.5f, -0.3f, -2.0f));
 
-    Model model;
-    model.loadMesh("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey2.obj", Vec3(-0.5f, -0.3f, -2.0f));
+    float *cpuTris;
+    size_t numTris;
+    parser.getTriangleData((const float**)&cpuTris, &numTris);
+    std::cout << "c3" << std::endl;
 
     float *gpuTris;
-    cudaMalloc((void **)&gpuTris, model.getSizeBytes());
-    cudaMemcpy(gpuTris, model.getFaces(), model.getSizeBytes(), cudaMemcpyKind::cudaMemcpyHostToDevice);
-    int numTris = model.getNumTris();
+    cudaMalloc((void **)&gpuTris, numTris * sizeof(float));
+    cudaMemcpy(gpuTris, cpuTris, numTris * sizeof(float), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    std::cout << "c4, " << numTris << std::endl;
 
-    Object **objects;
-    cudaMalloc((void **)&objects, NUM_OBJECTS * sizeof(Object*));
-    initScene<<<1, 1>>>(objects);
+    // Object **objects;
+    // cudaMalloc((void **)&objects, NUM_OBJECTS * sizeof(Object*));
+    // initScene<<<1, 1>>>(objects);
 
     size_t img_bytes = IMAGE_WIDTH * IMAGE_WIDTH * 3 * sizeof(float);
     float* pixels;
@@ -340,8 +348,10 @@ int main(int argc, char** argv)
 
     dim3 block(16, 16);
     dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x, (IMAGE_WIDTH + block.y - 1) / block.y);
-    render2<<<grid, block>>>(pixels, gpuTris, numTris, gpuEnvTex);
+    std::cout << "begin rendering" << std::endl;
+    render2<<<grid, block>>>(pixels, gpuTris, static_cast<int>(numTris), gpuEnvTex);
     cudaDeviceSynchronize();
+    std::cout << "done rendering" << std::endl;
 
     float* pixels_cpu = new float[IMAGE_WIDTH * IMAGE_WIDTH * 3];
     cudaMemcpy(pixels_cpu, pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
@@ -350,7 +360,6 @@ int main(int argc, char** argv)
     Texture::saveImgData("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\output\\output.png", pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
     delete[] pixels_cpu;
 
-    // t.save("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\output.png");
 
     // cudaFree(d_img);
     // stbi_image_free(h_img);
