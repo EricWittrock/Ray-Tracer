@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include "material.h"
+#include "BVHcreator.h"
 
 namespace SceneAssets
 {
@@ -80,6 +81,6 @@ public:
     SceneAssets::ObjectInstance* getObjectInstanceByName(std::string name);
     int getMaterialIndexByName(std::string name);
 
-    void getTriangleData(const float** tris, size_t* num_tris);
+    void getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes);
     void getMaterialData(const Material** materials, size_t* num_materials);
 };

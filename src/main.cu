@@ -12,6 +12,7 @@
 #include "model.h"
 #include "sceneParser.h"
 #include "material.h"
+#include "BVHcreator.h"
 
 // __device__ Vec3 castRay(Ray& ray) {
 //     Vec3 color(0.0f, 1.0f, 0.0f);
@@ -63,7 +64,7 @@ __global__ void render(float* pixels, Object** objects, float* envTex) {
         Vec3 diffuseMultiplier(1.0f, 1.0f, 1.0f);
 
         for (int j = 0; j<MAX_BOUNCES; j++) {
-            float minDistSqr = 1e9;
+            float minDistSqr = 1e9f;
             Vec3 hitPos;
             Vec3 hitNormal;
             Object *hitObject = nullptr;
@@ -184,7 +185,43 @@ __device__ Vec3 interpolateNormal(const Vec3& n0, const Vec3& n1, const Vec3& n2
     return (n0 * bary.x + n1 * bary.y + n2 * bary.z).normalize();
 }
 
-__global__ void render2(float* pixels, float* tris, int numTris, Material *materials, float* envTex) {
+
+__device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node) {
+    float temp;
+    float tmin = (node.bbox_min_x - ray.position.x) / ray.direction.x;
+    float tmax = (node.bbox_max_x - ray.position.x) / ray.direction.x;
+    if (tmin > tmax) {
+        temp = tmin;
+        tmin = tmax;
+        tmax = temp;
+    }
+
+    float tymin = (node.bbox_min_y - ray.position.y) / ray.direction.y;
+    float tymax = (node.bbox_max_y - ray.position.y) / ray.direction.y;
+    if (tymin > tymax) {
+        temp = tymin;
+        tymin = tymax;
+        tymax = temp;
+    }
+
+    if ((tmin > tymax) || (tymin > tmax)) return 1e13f;
+    if (tymin > tmin) tmin = tymin;
+    if (tymax < tmax) tmax = tymax;
+
+    float tzmin = (node.bbox_min_z - ray.position.z) / ray.direction.z;
+    float tzmax = (node.bbox_max_z - ray.position.z) / ray.direction.z;
+    if (tzmin > tzmax) {
+        temp = tzmin;
+        tzmin = tzmax;
+        tzmax = temp;
+    }
+
+    if ((tmin > tzmax) || (tzmin > tmax)) return 1e13f;
+    return tmin;
+}
+
+
+__global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* envTex) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= IMAGE_WIDTH || y >= IMAGE_WIDTH) return;
@@ -214,22 +251,70 @@ __global__ void render2(float* pixels, float* tris, int numTris, Material *mater
         for (int j = 0; j<MAX_BOUNCES; j++) {
             Vec3 hitPos;
             int hitTriIndex = -1;
-            float minDistSqr = 1e12;
-            for (int i = 0; i < numTris; i+=25) {
-                Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
-                Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
-                Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
-                
-                Vec3 pos;
-                if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
-                    float newDistSqr = (pos - ray.position).lengthSqr();
-                    if (newDistSqr < minDistSqr) {
-                        minDistSqr = newDistSqr;
-                        hitPos = pos;
-                        hitTriIndex = i;
+            float minDistSqr = 1e12f;
+
+            ////////////////////////////////////////////////////////////////////////////////
+            BVH::BVHNode* stack[BVH_DEPTH];
+            int stackPtr = 0;
+            if (AABBIntersectDistance(ray, bvhNodes[0]) < 1e12) {
+                stack[stackPtr++] = &bvhNodes[0];
+            }
+
+            while(stackPtr > 0) {
+                BVH::BVHNode* node = stack[--stackPtr];
+
+                if (node->childAIndex == -1) { // leaf node
+                    int startTriData = node->startTriDataOffs;
+                    int endTriData = startTriData + node->triDataLength;
+                    for (int i = startTriData; i < endTriData; i+=25) {
+                        Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
+                        Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
+                        Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
+                        
+                        Vec3 pos;
+                        if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
+                            float newDistSqr = (pos - ray.position).lengthSqr();
+                            if (newDistSqr < minDistSqr) {
+                                minDistSqr = newDistSqr;
+                                hitPos = pos;
+                                hitTriIndex = i;
+                            }
+                        }
+                    }
+                } else {
+                    // add nearest box last so it gets processed first
+                    float distAsqr = AABBIntersectDistance(ray, bvhNodes[node->childAIndex]);
+                    float distBsqr = AABBIntersectDistance(ray, bvhNodes[node->childBIndex]);
+                    distAsqr = distAsqr * distAsqr;
+                    distBsqr = distBsqr * distBsqr;
+
+                    if (distAsqr < distBsqr) {
+                        if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
+                        if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
+                    } else {
+                        if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
+                        if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
                     }
                 }
             }
+
+            // for (int i = 0; i < numTris; i+=25) {
+            //     Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
+            //     Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
+            //     Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
+                
+            //     Vec3 pos;
+            //     if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
+            //         float newDistSqr = (pos - ray.position).lengthSqr();
+            //         if (newDistSqr < minDistSqr) {
+            //             minDistSqr = newDistSqr;
+            //             hitPos = pos;
+            //             hitTriIndex = i;
+            //         }
+            //     }
+            // }
+            ////////////////////////////////////////////////////////////////////////////////
+
             if (hitTriIndex >= 0) { // hit
                 Vec3 v0(tris[hitTriIndex + 0], tris[hitTriIndex + 1], tris[hitTriIndex + 2]);
                 Vec3 v1(tris[hitTriIndex + 3], tris[hitTriIndex + 4], tris[hitTriIndex + 5]);
@@ -327,12 +412,17 @@ int main(int argc, char** argv)
     SceneParser parser;
     parser.parseFromFile("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\scene.txt");
 
-    const float *cpuTris;
+    float *cpuTris;
     size_t numTris;
-    parser.getTriangleData(&cpuTris, &numTris);
+    BVH::BVHNode* bvh_nodes = nullptr;
+    int num_bvh_nodes = 0;
     float *gpuTris;
+    parser.getTriangleData(&cpuTris, &numTris, &bvh_nodes, &num_bvh_nodes);
     cudaMalloc((void **)&gpuTris, numTris * sizeof(float));
     cudaMemcpy(gpuTris, cpuTris, numTris * sizeof(float), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    BVH::BVHNode* gpuBVHNodes;
+    cudaMalloc((void **)&gpuBVHNodes, num_bvh_nodes * sizeof(BVH::BVHNode));
+    cudaMemcpy(gpuBVHNodes, bvh_nodes, num_bvh_nodes * sizeof(BVH::BVHNode), cudaMemcpyKind::cudaMemcpyHostToDevice);
 
     const Material *materials;
     size_t numMaterials;
@@ -353,10 +443,20 @@ int main(int argc, char** argv)
 
     dim3 block(16, 16);
     dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x, (IMAGE_WIDTH + block.y - 1) / block.y);
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
     std::cout << "begin rendering" << std::endl;
-    render2<<<grid, block>>>(pixels, gpuTris, static_cast<int>(numTris), gpuMaterials, gpuEnvTex);
+    render2<<<grid, block>>>(pixels, gpuTris, static_cast<int>(numTris), gpuBVHNodes, gpuMaterials, gpuEnvTex);
     cudaDeviceSynchronize();
     std::cout << "done rendering" << std::endl;
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    std::cout << "Render time: " << milliseconds << " ms" << std::endl;
 
     float* pixels_cpu = new float[IMAGE_WIDTH * IMAGE_WIDTH * 3];
     cudaMemcpy(pixels_cpu, pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);

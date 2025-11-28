@@ -32,7 +32,7 @@ public:
     }
 
     __host__ unsigned int getNumTris() const {
-        return facesLength / 9;
+        return facesLength / 25;
     }
 
     __host__ unsigned int getDataLength() const {

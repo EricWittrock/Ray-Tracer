@@ -308,7 +308,7 @@ SceneAssets::ObjectInstance* SceneParser::getObjectInstanceByName(std::string na
     exit(1);
 }
 
-void SceneParser::getTriangleData(const float** tris, size_t* arr_len) {  
+void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes) {  
     std::vector<Model> models;
 
     std::cout << "Number of object instances: " << object_instances.size() << std::endl;
@@ -338,6 +338,8 @@ void SceneParser::getTriangleData(const float** tris, size_t* arr_len) {
         std::memcpy(all_tris + offset, model_tris, model_length * sizeof(float));
         offset += model_length;
     }
+
+    BVH::createBVH(all_tris, total_length, bvh_nodes, num_bvh_nodes);
     
     *tris = all_tris;
     *arr_len = total_length;
