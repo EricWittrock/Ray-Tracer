@@ -187,39 +187,50 @@ __device__ Vec3 interpolateNormal(const Vec3& n0, const Vec3& n1, const Vec3& n2
 
 
 __device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node) {
-    float temp;
-    float tmin = (node.bbox_min_x - ray.position.x) / ray.direction.x;
-    float tmax = (node.bbox_max_x - ray.position.x) / ray.direction.x;
-    if (tmin > tmax) {
-        temp = tmin;
-        tmin = tmax;
-        tmax = temp;
+    // Check if origin is inside the AABB
+    if (ray.position.x >= node.bbox_min_x && ray.position.x <= node.bbox_max_x &&
+        ray.position.y >= node.bbox_min_y && ray.position.y <= node.bbox_max_y &&
+        ray.position.z >= node.bbox_min_z && ray.position.z <= node.bbox_max_z)
+    {
+        return 0.0f;
     }
 
-    float tymin = (node.bbox_min_y - ray.position.y) / ray.direction.y;
-    float tymax = (node.bbox_max_y - ray.position.y) / ray.direction.y;
-    if (tymin > tymax) {
-        temp = tymin;
-        tymin = tymax;
-        tymax = temp;
-    }
+    float tmin = 0.0f;
+    float tmax = 1e13f;
+    float invDirX = 1.0f / ray.direction.x;
+    float invDirY = 1.0f / ray.direction.y;
+    float invDirZ = 1.0f / ray.direction.z;
 
-    if ((tmin > tymax) || (tymin > tmax)) return 1e13f;
-    if (tymin > tmin) tmin = tymin;
-    if (tymax < tmax) tmax = tymax;
+    float t1;
+    float t2;
+    float tNear;
+    float tFar;
 
-    float tzmin = (node.bbox_min_z - ray.position.z) / ray.direction.z;
-    float tzmax = (node.bbox_max_z - ray.position.z) / ray.direction.z;
-    if (tzmin > tzmax) {
-        temp = tzmin;
-        tzmin = tzmax;
-        tzmax = temp;
-    }
+    t1 = (node.bbox_min_x - ray.position.x) * invDirX;
+    t2 = (node.bbox_max_x - ray.position.x) * invDirX;
+    tNear = fminf(t1, t2);
+    tFar = fmaxf(t1, t2);
+    tmin = fmaxf(tmin, tNear);
+    tmax = fminf(tmax, tFar);
 
-    if ((tmin > tzmax) || (tzmin > tmax)) return 1e13f;
+    t1 = (node.bbox_min_y - ray.position.y) * invDirY;
+    t2 = (node.bbox_max_y - ray.position.y) * invDirY;
+    tNear = fminf(t1, t2);
+    tFar = fmaxf(t1, t2);
+    tmin = fmaxf(tmin, tNear);
+    tmax = fminf(tmax, tFar);
+
+    t1 = (node.bbox_min_z - ray.position.z) * invDirZ;
+    t2 = (node.bbox_max_z - ray.position.z) * invDirZ;
+    tNear = fminf(t1, t2);
+    tFar = fmaxf(t1, t2);
+    tmin = fmaxf(tmin, tNear);
+    tmax = fminf(tmax, tFar);
+
+    if (tmax < tmin) return 1e13f;
+    if (tmin < 0.0f) return 1e13f;
     return tmin;
 }
-
 
 __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* envTex) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -256,12 +267,17 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
             ////////////////////////////////////////////////////////////////////////////////
             BVH::BVHNode* stack[BVH_DEPTH];
             int stackPtr = 0;
+            // stack[stackPtr++] = &bvhNodes[0];
             if (AABBIntersectDistance(ray, bvhNodes[0]) < 1e12) {
                 stack[stackPtr++] = &bvhNodes[0];
             }
 
             while(stackPtr > 0) {
                 BVH::BVHNode* node = stack[--stackPtr];
+
+                // if (AABBIntersectDistance(ray, *node) > 1e12) {
+                //     continue;
+                // }
 
                 if (node->childAIndex == -1) { // leaf node
                     int startTriData = node->startTriDataOffs;
@@ -295,6 +311,8 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                         if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
                         if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
                     }
+                    // stack[stackPtr++] = &bvhNodes[node->childAIndex];
+                    // stack[stackPtr++] = &bvhNodes[node->childBIndex];
                 }
             }
 
