@@ -27,13 +27,18 @@ MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.mtl
 
 DEF_MATERIAL mat1
 TYPE 0
-COLOR 0.0 1.0 0.5
 #ROUGHNESS IMAGE backgroundTexture
 #NORMAL IMAGE backgroundTexture
 
 DEF_MATERIAL mat2
 TYPE 1
-COLOR 0.0 1.0 0.5
+#ROUGHNESS IMAGE backgroundTexture
+#NORMAL IMAGE backgroundTexture
+
+DEF_MATERIAL glass_mat
+TYPE 2
+P1 0.7
+P2 0.99
 #ROUGHNESS IMAGE backgroundTexture
 #NORMAL IMAGE backgroundTexture
 

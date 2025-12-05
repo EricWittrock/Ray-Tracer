@@ -176,13 +176,24 @@ void SceneParser::parseLineMaterialDef(const std::string& line, const std::strin
 
     if (first_word == "TYPE") {
         material->type = static_cast<char>(std::stoi(nth_word(line, 1)));
-    } else if(first_word == "COLOR") {
-        material->albedo = Vec3(
+    }
+    else if(first_word == "COLOR") {
+        material->color = Vec3(
             std::stof(nth_word(line, 1)),
             std::stof(nth_word(line, 2)),
             std::stof(nth_word(line, 3))
         );
-    } else {
+    }
+    else if(first_word == "P1") {
+        material->p1 = std::stof(nth_word(line, 1));
+    }
+    else if(first_word == "P2") {
+        material->p2 = std::stof(nth_word(line, 1));
+    }
+    else if(first_word == "P3") {
+        material->p3 = std::stof(nth_word(line, 1));
+    }
+    else {
         std::cout << "Unknown MATERIAL definition command: " << first_word << std::endl;
         exit(1);
     }
@@ -351,6 +362,10 @@ void SceneParser::getMaterialData(const Material** out_materials, size_t* num_ma
 
     for (int i = 0; i < count; i++) {
         material_array[i].type = materials[i].type;
+        material_array[i].color = materials[i].color.colorToInt();
+        material_array[i].p1 = materials[i].p1;
+        material_array[i].p2 = materials[i].p2;
+        material_array[i].p3 = materials[i].p3;
         // material_array[i].albedo = this->materials[i].albedo;
     }
 

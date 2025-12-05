@@ -1,0 +1,35 @@
+#include "material.h"
+
+#ifdef __CUDA_ARCH__
+__device__ void Material::reflect(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const
+{
+    Vec3 color = Vec3(1.0f, 0.0f, 0.0f);
+    if (material.type == 1)
+    {
+        color = Vec3(0.0f, 1.0f, 0.0f);
+    }
+    if (curand_uniform(randState) < 0.01f)
+    { // clear coat reflection
+        ray.diffuseMultiplier = ray.diffuseMultiplier * Vec3(0.95f, 0.0f, 0.0f);
+        ray.position = hitPos;
+        Vec3 newDir = ray.direction.reflect(normal);
+        ray.direction = newDir;
+    }
+    else
+    { // diffuse reflection
+        // Vec3 color = Vec3::fromColorInt(material.color);
+        ray.diffuseMultiplier = ray.diffuseMultiplier * color;
+        ray.position = hitPos;
+        Vec3 randVec = Vec3(
+            curand_uniform(randState),
+            curand_uniform(randState),
+            curand_uniform(randState)
+        );
+        Vec3 newDir = ray.direction.reflect((normal + randVec * 0.1f).normalize());
+        ray.direction = newDir;
+    }
+
+
+    ray.marchForward(0.0001f);
+};
+#endif

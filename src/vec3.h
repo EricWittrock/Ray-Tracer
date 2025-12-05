@@ -16,18 +16,6 @@ public:
 
     __host__ __device__ Vec3() : x(0.0f), y(0.0f), z(0.0f) {}
 
-    // __host__ __device__ static Vec3 random() {
-    //     return Vec3(
-    //         (static_cast<float>(rand()) / RAND_MAX) * 2.0 - 1.0,
-    //         (static_cast<float>(rand()) / RAND_MAX) * 2.0 - 1.0,
-    //         (static_cast<float>(rand()) / RAND_MAX) * 2.0 - 1.0
-    //     );
-    // }
-
-    // __host__ __device__ static Vec3 randomGaussian(std::mt19937 &rng, float stddev = 1.0) {
-    //     std::normal_distribution<float> dist(0.0, stddev);
-    //     return Vec3(dist(rng), dist(rng), dist(rng));
-    // }
 
     __host__ __device__ inline float dot(const Vec3& v) const {
         return x * v.x + y * v.y + z * v.z;
@@ -79,6 +67,20 @@ public:
 
     __host__ __device__ inline Vec3 copy() const {
         return Vec3(x, y, z);
+    }
+
+    __host__ __device__ int colorToInt() const {
+        int r = static_cast<int>(fminf(fmaxf(x * 255.0f, 0.0f), 255.0f));
+        int g = static_cast<int>(fminf(fmaxf(y * 255.0f, 0.0f), 255.0f));
+        int b = static_cast<int>(fminf(fmaxf(z * 255.0f, 0.0f), 255.0f));
+        return (r << 16) | (g << 8) | b;
+    }
+
+    __host__ __device__ static Vec3 fromColorInt(int color) {
+        float r = static_cast<float>((color >> 16) & 0xFF) / 255.0f;
+        float g = static_cast<float>((color >> 8) & 0xFF) / 255.0f;
+        float b = static_cast<float>(color & 0xFF) / 255.0f;
+        return Vec3(r, g, b);
     }
 
     __host__ __device__ inline void operator = (const Vec3& v) {

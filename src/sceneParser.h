@@ -21,7 +21,10 @@ namespace SceneAssets
     struct Material {
         std::string name;
         char type;
-        Vec3 albedo;
+        Vec3 color;
+        float p1;
+        float p2;
+        float p3;
     };
     struct Object {
         std::string name;

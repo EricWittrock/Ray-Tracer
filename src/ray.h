@@ -8,8 +8,12 @@
 
 class Ray {
 public:
+    Vec3 position;
+    Vec3 direction;
+    Vec3 diffuseMultiplier;
+
     __host__ __device__ Ray(const Vec3& origin, const Vec3& direction)
-        : position(origin), direction(direction) {}
+        : position(origin), direction(direction), diffuseMultiplier(1.0f, 1.0f, 1.0f) {}
 
     __host__ __device__ void marchForward(float distance) {
         position += direction * distance;
@@ -17,11 +21,7 @@ public:
 
     __host__ __device__ Ray copy() const {
         Ray r(position, direction);
-        r.numBounces = numBounces;
+        r.diffuseMultiplier = diffuseMultiplier;
         return r;
     }
-
-    Vec3 position;
-    Vec3 direction;
-    int numBounces = 0;
 };
