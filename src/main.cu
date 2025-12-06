@@ -250,7 +250,11 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 Material hitMaterial = materials[hitIndex];
 
 
-                hitMaterial.reflect(ray, hitNormal, hitPos, hitMaterial, &randState);
+                bool terminated = hitMaterial.reflect(ray, hitNormal, hitPos, hitMaterial, &randState);
+                if (terminated) {
+                    color += ray.emission * ray.diffuseMultiplier;
+                    break;
+                }
 
                 // Vec3 color(0.0f, 1.0f, 0.0f);
                 // if (hitMaterial.type == 1) {

@@ -11,9 +11,15 @@ public:
     Vec3 position;
     Vec3 direction;
     Vec3 diffuseMultiplier;
+    Vec3 emission;
+    float refractiveIndex;
 
     __host__ __device__ Ray(const Vec3& origin, const Vec3& direction)
-        : position(origin), direction(direction), diffuseMultiplier(1.0f, 1.0f, 1.0f) {}
+        : position(origin),
+         direction(direction),
+         diffuseMultiplier(1.0f, 1.0f, 1.0f),
+         emission(0.0f, 0.0f, 0.0f),
+         refractiveIndex(1.0f) {}
 
     __host__ __device__ void marchForward(float distance) {
         position += direction * distance;
@@ -22,6 +28,8 @@ public:
     __host__ __device__ Ray copy() const {
         Ray r(position, direction);
         r.diffuseMultiplier = diffuseMultiplier;
+        r.refractiveIndex = refractiveIndex;
+        r.emission = emission;
         return r;
     }
 };

@@ -37,14 +37,24 @@ public:
         return std::sqrtf(lengthSqr());
     }
 
-    __host__ __device__ inline Vec3 reflect(const Vec3& normal) const {
+    __host__ __device__ inline void reflect(const Vec3& normal) {
         float d = 2.0f * dot(normal);
-        return Vec3(
-            x - d * normal.x,
-            y - d * normal.y,
-            z - d * normal.z
-        );
-        // return this->copy();
+        x = x - d * normal.x;
+        y = y - d * normal.y;
+        z = z - d * normal.z;
+    }
+
+    __host__ __device__ inline void refract(const Vec3& normal, float n) {
+        float cosI = -dot(normal);
+        float sinT2 = n * n * (1.0f - cosI * cosI);
+        if (sinT2 > 1.0f) {
+            reflect(normal);
+            return;
+        }
+        float cosT = std::sqrtf(1.0f - sinT2);
+        x = n * x + (n * cosI - cosT) * normal.x;
+        y = n * y + (n * cosI - cosT) * normal.y;
+        z = n * z + (n * cosI - cosT) * normal.z;
     }
 
     __host__ __device__ inline Vec3 normalize() const {

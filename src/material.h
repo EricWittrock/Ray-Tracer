@@ -33,22 +33,37 @@ public:
     {
     }
 
-    //  Material.reflect(ray, hitNormal, hitPos, hitMaterial, &randState);
 
-    __device__ void reflect(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const
+    // return true if terminated
+    __device__ bool reflect(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const
+    {
+        switch (type) {
+            case 0:
+                reflectType0(ray, normal, hitPos, material, randState);
+                break;
+            case 1:
+                reflectType1(ray, normal, hitPos, material, randState);
+                return true; // terminate after emissive hit
+            default:
+                return true;
+                
+        }
+        
+        return false;
+    };
+
+private:
+
+    __device__ void reflectType0(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
         Vec3 color(0.0f, 1.0f, 0.0f);
-        if (material.type == 1) {
-            color = Vec3(0.0f, 0.0f, 1.0f);
-        }
         
         if(curand_uniform(randState) < 0.1f) { // clear coat reflection
             ray.diffuseMultiplier = ray.diffuseMultiplier * Vec3(0.95f, 0.95f, 0.95f);
             ray.position = hitPos;
-            Vec3 newDir = ray.direction.reflect(normal);
-            ray.direction = newDir;
-
-        } else { // diffuse reflection
+            ray.direction.reflect(normal);
+        }
+        else { // diffuse reflection
             ray.diffuseMultiplier = ray.diffuseMultiplier * color;
             ray.position = hitPos;
             Vec3 randVec = Vec3(
@@ -56,65 +71,16 @@ public:
                 curand_normal(randState),
                 curand_normal(randState)
             );
-            Vec3 newDir = ray.direction.reflect((normal + randVec * 0.1f).normalize());
-            ray.direction = newDir;
+            ray.direction.reflect((normal + randVec * 0.1f).normalize());
         }
         
         ray.marchForward(0.0001f);
-        // Vec3 color = Vec3(0.0f, 1.0f, 0.0f);
-        // if (material.type == 1)
-        // {
-        //     color = Vec3(1.0f, 0.0f, 0.0f);
-        // }
-        // if (curand_uniform(randState) < 0.1f)
-        // { // clear coat reflection
-        //     ray.diffuseMultiplier = ray.diffuseMultiplier * Vec3(0.95f, 0.0f, 0.0f);
-        //     ray.position = hitPos;
-        //     Vec3 newDir = ray.direction.reflect(normal);
-        //     ray.direction = newDir;
-        // }
-        // else
-        // { // diffuse reflection
-        //     // Vec3 color = Vec3::fromColorInt(material.color);
-        //     ray.diffuseMultiplier = ray.diffuseMultiplier * color;
-        //     ray.position = hitPos;
-        //     Vec3 randVec = Vec3(
-        //         curand_uniform(randState),
-        //         curand_uniform(randState),
-        //         curand_uniform(randState)
-        //     );
-        //     Vec3 newDir = ray.direction.reflect((normal + randVec * 0.1f).normalize());
-        //     ray.direction = newDir;
-        // }
+    }
 
-
-        // ray.marchForward(0.0001f);
-    };
-
-    // __device__ Vec3 reflect(Ray& ray, const Vec3& normal, const Vec3& pos, curandState* randState) const
-    // {
-    //     if(curand_uniform(randState) < 0.1f) { // clear coat reflection
-    //         ray.position = pos;
-    //         Vec3 newDir = ray.direction.reflect(normal.normalize());
-    //         ray.direction = newDir;
-    //         ray.marchForward(0.0001);
-    //         return Vec3(0.95f, 0.95f, 0.95f);
-
-    //     }
-
-    //     // diffuse reflection
-    //     ray.position = pos;
-    //     Vec3 randVec = Vec3(
-    //         curand_normal(randState),
-    //         curand_normal(randState),
-    //         curand_normal(randState)
-    //     );
-    //     Vec3 newDir = ray.direction.reflect((normal + randVec * 0.2).normalize());
-    //     ray.direction = newDir;
-
-    //     ray.marchForward(0.0001);
-    //     return Vec3(0.1f, 0.35f, 0.1f);
-    // };
-
-    // __device__ Vec3 reflect(Ray& ray, const Vec3& normal, const Vec3& pos) const;
+    // emissive
+    __device__ void reflectType1(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
+    {
+        Vec3 color(0.0f, 3.0f, 3.0f);
+        ray.emission = color;
+    }
 };
