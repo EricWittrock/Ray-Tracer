@@ -8,10 +8,10 @@ SET_CAM_POS 0.0 0.0 0.0
 SET_CAM_LOOK_AT 0.0 100.0 0.0
 
 DEF_IMAGE backgroundTexture 
-PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
+# PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
 
-DEF_IMAGE backgroundTexture 
-PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
+
 
 
 DEF_MODEL monkeyModel
@@ -22,8 +22,12 @@ DEF_MODEL cubeModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.obj
 MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.mtl
 
+DEF_MODEL sphereModel
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\sphere.obj
 
-# todo: ALBEDO NOISE <PARAMS>
+DEF_MODEL planeModel
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\plane.obj
+
 
 DEF_MATERIAL mat1
 TYPE 0
@@ -35,43 +39,53 @@ TYPE 1
 #ROUGHNESS IMAGE backgroundTexture
 #NORMAL IMAGE backgroundTexture
 
+DEF_MATERIAL light_mat
+TYPE 1
+P1 20.0
+
 DEF_MATERIAL glass_mat
 TYPE 2
-P1 0.7
-P2 0.99
-#ROUGHNESS IMAGE backgroundTexture
-#NORMAL IMAGE backgroundTexture
+P1 0.5
 
-DEF_OBJ sphere1
-#MODEL SPHERE
-MODEL monkeyModel
-MATERIAL mat1
+DEF_MATERIAL standard_mat
+TYPE 0
+P1 0.05
+P2 0.3
+
+DEF_MATERIAL mirror_mat
+TYPE 0
+P1 1.0
+
 
 DEF_OBJ obj2
-MODEL monkeyModel
-MATERIAL mat2
+MODEL sphereModel
+MATERIAL standard_mat
 
 DEF_OBJ obj3
-MODEL cubeModel
-MATERIAL mat1
+MODEL planeModel
+MATERIAL standard_mat
 
-# SET_BACKGROUND <image, color, or noise>
+DEF_OBJ obj_light
+MODEL sphereModel
+MATERIAL light_mat
+
+
 SET_BACKGROUND backgroundTexture
 
-ADD_OBJECT someobj1
-OBJECT obj3
-POSITION -0.5 -2.3 -3.0
+ADD_OBJECT light
+OBJECT obj_light
+POSITION 5.5 5.5 -2.5
 #ORIENTATION 1.0 0.0 0.0 0.0
 SCALE 1.0
 
 ADD_OBJECT someobj2
 OBJECT obj2
-POSITION -1.5 -0.3 -5.0
+POSITION 0.0 0.0 -2.5
 #ORIENTATION 1.0 0.0 0.0 0.0
 SCALE 1.0
 
-#ADD_OBJECT someobj3
-#OBJECT obj2
-#POSITION 0.0 -1.0 1.0
+ADD_OBJECT someobj1
+OBJECT obj3
+POSITION 0.0 -1.01 -4.9
 #ORIENTATION 1.0 0.0 0.0 0.0
-#SCALE 1.0
+SCALE 15.0

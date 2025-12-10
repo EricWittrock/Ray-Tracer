@@ -31,7 +31,6 @@ void SceneParser::parseFromFile(const char* path) {
     std::string name;
 
     while (std::getline(file, line)) {
-        std::cout << "line: " << line << std::endl;
         if(line.empty()) {
             scope = GLOBAL;
             continue;
@@ -91,14 +90,9 @@ void SceneParser::parseFromFile(const char* path) {
         else if (first_word == "ADD_OBJECT") {
             scope = DEF_OBJECT_INSTANCE;
             name = nth_word(line, 1);
-            std::cout << "test ADD_OBJECT, " << name << std::endl;
             SceneAssets::ObjectInstance object_instance;
             object_instance.name = name;
             object_instances.push_back(object_instance);
-
-            for (auto& oi : object_instances) {
-                std::cout << "Existing object instance: " << oi.name << std::endl;
-            }
         } 
         else if (first_word == "DEF_IMAGE") {
             scope = DEF_IMAGE;
@@ -115,7 +109,6 @@ void SceneParser::parseFromFile(const char* path) {
             models.push_back(model);
         } 
         else if (first_word == "DEF_MATERIAL") {
-            std::cout << "test" << std::endl;
             scope = DEF_MATERIAL;
             name = nth_word(line, 1);
             SceneAssets::Material material;
@@ -123,7 +116,6 @@ void SceneParser::parseFromFile(const char* path) {
             materials.push_back(material);
         } 
         else if (first_word == "DEF_OBJ") {
-            std::cout << "test" << std::endl;
             scope = DEF_OBJECT;
             name = nth_word(line, 1);
             SceneAssets::Object object;
@@ -141,7 +133,6 @@ void SceneParser::parseFromFile(const char* path) {
 }
 
 void SceneParser::parseLineImageDef(const std::string& line, const std::string& name) {
-    std::cout << "test" << std::endl;
     SceneAssets::Texture* texture = getTextureByName(name);
     std::string first_word = nth_word(line, 0);
 
@@ -154,7 +145,6 @@ void SceneParser::parseLineImageDef(const std::string& line, const std::string& 
 }
 
 void SceneParser::parseLineModelDef(const std::string& line, const std::string& name) {
-    std::cout << "test" << std::endl;
     SceneAssets::Model* model = getModelByName(name);
     std::string first_word = nth_word(line, 0);
 
@@ -330,7 +320,7 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
         std::string model_name = object->model_name;
         SceneAssets::Model* model_info = getModelByName(model_name);
         Model model;
-        model.loadMesh(model_info->path.c_str(), object_instance.position, materialIndex);
+        model.loadMesh(model_info->path.c_str(), object_instance.position, object_instance.scale, materialIndex);
         models.push_back(std::move(model));
     }
 

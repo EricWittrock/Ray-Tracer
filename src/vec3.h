@@ -44,17 +44,19 @@ public:
         z = z - d * normal.z;
     }
 
-    __host__ __device__ inline void refract(const Vec3& normal, float n) {
-        float cosI = -dot(normal);
-        float sinT2 = n * n * (1.0f - cosI * cosI);
-        if (sinT2 > 1.0f) {
-            reflect(normal);
-            return;
-        }
-        float cosT = std::sqrtf(1.0f - sinT2);
-        x = n * x + (n * cosI - cosT) * normal.x;
-        y = n * y + (n * cosI - cosT) * normal.y;
-        z = n * z + (n * cosI - cosT) * normal.z;
+    __host__ __device__ inline void refract(const Vec3& normal, float etai_over_etat) {
+        float cos_theta = fminf(-this->dot(normal), 1.0f);
+        Vec3 r_out_perp = Vec3(
+            (x + normal.x * cos_theta) * etai_over_etat,
+            (y + normal.y * cos_theta) * etai_over_etat,
+            (z + normal.z * cos_theta) * etai_over_etat);
+        Vec3 r_out_parallel = Vec3(
+            normal.x * -std::sqrtf(fabsf(1.0f - r_out_perp.lengthSqr())),
+            normal.y * -std::sqrtf(fabsf(1.0f - r_out_perp.lengthSqr())),
+            normal.z * -std::sqrtf(fabsf(1.0f - r_out_perp.lengthSqr())));
+        x = r_out_perp.x + r_out_parallel.x;
+        y = r_out_perp.y + r_out_parallel.y;
+        z = r_out_perp.z + r_out_parallel.z;
     }
 
     __host__ __device__ inline Vec3 normalize() const {
@@ -134,6 +136,10 @@ __host__ __device__ inline Vec3 operator - (const Vec3& v1, const Vec3& v2) {
 
 __host__ __device__ inline Vec3 operator * (const Vec3& v1, const Vec3& v2) {
     return Vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
+}
+
+__host__ __device__ inline Vec3 operator + (const Vec3& v, float s) {
+    return Vec3(v.x + s, v.y + s, v.z + s);
 }
 
 __host__ __device__ inline Vec3 operator * (const Vec3& v, float s) {

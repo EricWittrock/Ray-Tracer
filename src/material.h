@@ -8,7 +8,7 @@
 class Material
 {
 public:
-    char type; // 0 = diffuse, 1 = metal, 2 = dielectric, 3 = emissive, 4 = ...
+    char type;
     int color;
     float p1;
     float p2;
@@ -44,9 +44,12 @@ public:
             case 1:
                 reflectType1(ray, normal, hitPos, material, randState);
                 return true; // terminate after emissive hit
+            case 2:
+                return reflectType2(ray, normal, hitPos, material, randState);
+                break;
             default:
-                return true;
-                
+                ray.emission = Vec3(1.0f, 0.0f, 1.0f); // the color of error
+                return true;  
         }
         
         return false;
@@ -57,21 +60,20 @@ private:
     __device__ void reflectType0(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
         Vec3 color(0.0f, 1.0f, 0.0f);
+        ray.position = hitPos;
         
-        if(curand_uniform(randState) < 0.1f) { // clear coat reflection
+        if(curand_uniform(randState) < material.p1) { // clear coat reflection
             ray.diffuseMultiplier = ray.diffuseMultiplier * Vec3(0.95f, 0.95f, 0.95f);
-            ray.position = hitPos;
             ray.direction.reflect(normal);
         }
         else { // diffuse reflection
             ray.diffuseMultiplier = ray.diffuseMultiplier * color;
-            ray.position = hitPos;
             Vec3 randVec = Vec3(
                 curand_normal(randState),
                 curand_normal(randState),
                 curand_normal(randState)
             );
-            ray.direction.reflect((normal + randVec * 0.1f).normalize());
+            ray.direction.reflect((normal + randVec * material.p2).normalize());
         }
         
         ray.marchForward(0.0001f);
@@ -80,7 +82,67 @@ private:
     // emissive
     __device__ void reflectType1(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
-        Vec3 color(0.0f, 3.0f, 3.0f);
-        ray.emission = color;
+        Vec3 color(1.0f, 1.0f, 1.0f);
+        ray.emission = color * material.p1; // p1 = emission strength
+    }
+
+    // dielectric
+    __device__ bool reflectType2(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
+    {
+        ray.position = hitPos;
+        float dotNorm = ray.direction.dot(normal); // if < 0: hits from the outside
+        bool fromOutside = (dotNorm < 0.0f);
+        float oldRI = ray.refractiveIndex;
+        float newRI = (dotNorm < 0.0f) ? oldRI + p1 : oldRI - p1; // p1 = change in refractive index
+
+        float ri = oldRI / newRI;
+        float cos_theta = std::fminf(-ray.direction.dot(normal), 1.0f);
+        float sin_theta = std::sqrt(1.0f - cos_theta*cos_theta);
+        bool will_refract = ri * sin_theta <= 1.0f;
+
+        if (will_refract) {
+            float r0 = (1 - ri) / (1 + ri);
+            r0 = r0 * r0;
+            r0 = r0 + (1-r0) * std::pow((1 - cos_theta), 5);
+            if (r0 > curand_uniform(randState)) will_refract = false;
+        }
+
+        if(!fromOutside) will_refract = true; // always refract when exiting
+
+        if (will_refract) { // refract
+            if (dotNorm > 0.0f) {
+                ray.direction.refract(normal * -1, ri);
+            } else {
+                ray.direction.refract(normal, ri);
+            }
+        }
+        else // reflect
+        { 
+            Vec3 randVec = Vec3(
+                curand_normal(randState),
+                curand_normal(randState),
+                curand_normal(randState)
+            );
+            if (dotNorm > 0.0f) { // hit from inside
+                ray.direction.reflect(normal * -1 + randVec * 0.02f);
+                // ray.emission = Vec3(0.0f, 1.0f, 0.0f);
+            } else { // hit from outside
+                ray.direction.reflect(normal + randVec * 0.02f);
+                // ray.emission = Vec3(1.0f, 0.0f, 1.0f);
+            }
+            // return true;
+            
+            // ray.direction.reflect((normal + randVec * 0.05f).normalize());
+        }
+
+
+        
+
+        // ray.position = hitPos;
+        // float eta = ray.refractiveIndex / p1; // p1 = refractive index of material
+        // ray.direction.refract(normal, eta);
+        // ray.refractiveIndex += p1;
+        ray.marchForward(0.0001f);
+        return false;
     }
 };

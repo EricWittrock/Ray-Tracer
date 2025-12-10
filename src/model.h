@@ -43,7 +43,7 @@ public:
         return getDataLength() * sizeof(float);
     }
 
-    __host__ void loadMesh(const char* filename, Vec3& translation, int materialIndex) 
+    __host__ void loadMesh(const char* filename, Vec3& translation, float scale, int materialIndex) 
     {
         std::ifstream file(filename);
         if (!file.is_open()) {
@@ -65,9 +65,9 @@ public:
             if (c0 == 'v' && c1 == ' ') {
                 float x, y, z;
                 sscanf(line.c_str(), "v %f %f %f", &x, &y, &z);
-                verts.push_back(x + translation.x);
-                verts.push_back(y + translation.y);
-                verts.push_back(z + translation.z);
+                verts.push_back(x * scale + translation.x);
+                verts.push_back(y * scale + translation.y);
+                verts.push_back(z * scale + translation.z);
             }
             else if (c0 == 'v' && c1 == 'n') {
                 float x, y, z;

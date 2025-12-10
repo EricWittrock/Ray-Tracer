@@ -174,6 +174,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 stack[stackPtr++] = &bvhNodes[0];
             }
 
+            Vec3 numTests(0.0f, 0.0f, 0.0f);
             while(stackPtr > 0) {
                 BVH::BVHNode* node = stack[--stackPtr];
 
@@ -189,6 +190,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                         Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
                         Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
                         
+                        numTests.x += 0.1f;
                         Vec3 pos;
                         if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
                             float newDistSqr = (pos - ray.position).lengthSqr();
@@ -201,6 +203,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                     }
                 } else {
                     // add nearest box last so it gets processed first
+                    numTests.y += 1.0f;
                     float distAsqr = AABBIntersectDistance(ray, bvhNodes[node->childAIndex]);
                     float distBsqr = AABBIntersectDistance(ray, bvhNodes[node->childBIndex]);
                     distAsqr = distAsqr * distAsqr;
@@ -234,6 +237,8 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
             //     }
             // }
             ////////////////////////////////////////////////////////////////////////////////
+            // color += numTests * 0.01;
+            // break;
 
             if (hitTriIndex >= 0) { // hit
                 Vec3 v0(tris[hitTriIndex + 0], tris[hitTriIndex + 1], tris[hitTriIndex + 2]);
@@ -249,37 +254,13 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 int hitIndex = static_cast<int>(tris[hitTriIndex + 24]);
                 Material hitMaterial = materials[hitIndex];
 
-
                 bool terminated = hitMaterial.reflect(ray, hitNormal, hitPos, hitMaterial, &randState);
                 if (terminated) {
                     color += ray.emission * ray.diffuseMultiplier;
                     break;
                 }
+                Vec3::normalize(ray.direction);
 
-                // Vec3 color(0.0f, 1.0f, 0.0f);
-                // if (hitMaterial.type == 1) {
-                //     color = Vec3(1.0f, 0.0f, 0.0f);
-                // }
-                
-                // if(curand_uniform(&randState) < 0.1f) { // clear coat reflection
-                //     ray.diffuseMultiplier = ray.diffuseMultiplier * Vec3(0.95f, 0.95f, 0.95f);
-                //     ray.position = hitPos;
-                //     Vec3 newDir = ray.direction.reflect(hitNormal);
-                //     ray.direction = newDir;
-
-                // } else { // diffuse reflection
-                //     ray.diffuseMultiplier = ray.diffuseMultiplier * color;
-                //     ray.position = hitPos;
-                //     Vec3 randVec = Vec3(
-                //         curand_normal(&randState),
-                //         curand_normal(&randState),
-                //         curand_normal(&randState)
-                //     );
-                //     Vec3 newDir = ray.direction.reflect((hitNormal + randVec * 0.1f).normalize());
-                //     ray.direction = newDir;
-                // }
-                
-                // ray.marchForward(0.0001f);
             } else {
                 // hit the emissive backdrop
                 const int width = 4096; // TODO: don't hardcode dimensions
@@ -291,7 +272,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 int envImgX = static_cast<int>(backdropX) % width; // wrap around
                 int envImgY = static_cast<int>(backdropY) % height;
                 int envI = (envImgY * width + envImgX) * 3;
-                color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * ray.diffuseMultiplier * 1.0f;
+                color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
                 break;
             }
         }
@@ -299,6 +280,12 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
 
     color /= static_cast<float>(NUM_SAMPLES);
     toneMap(color);
+    // if (color.x > 1.0f) color.x = 1.0f;
+    // if (color.y > 1.0f) color.y = 1.0f;
+    // if (color.z > 1.0f) color.z = 1.0f;
+    // if (color.x < 0.0f) color.x = 0.0f;
+    // if (color.y < 0.0f) color.y = 0.0f;
+    // if (color.z < 0.0f) color.z = 0.0f;
 
     int idx = (y * IMAGE_WIDTH + x) * 3;
     pixels[idx + 0] = color.x;
@@ -358,7 +345,7 @@ int main(int argc, char** argv)
     float* pixels;
     cudaMalloc(&pixels, img_bytes);
 
-    Texture environmentMap = Texture("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr");
+    Texture environmentMap = Texture("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr");
     float* gpuEnvTex;
     cudaMalloc(&gpuEnvTex, environmentMap.sizeBytes());
     cudaMemcpy(gpuEnvTex, environmentMap.getData(), environmentMap.sizeBytes(), cudaMemcpyKind::cudaMemcpyHostToDevice);
