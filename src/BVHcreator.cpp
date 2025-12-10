@@ -84,8 +84,6 @@ namespace BVH
     
 
     void splitNode(BVHTempNode &node) {        
-        float maxPosA = -1e12f;
-        float minPosB = 1e12f;
         char axis = 0; // 0=x, 1=y, 2=z
         float meanVertexPos = 0.0f;
         float xWidth = node.bbox_max.x - node.bbox_min.x;
@@ -137,26 +135,35 @@ namespace BVH
 
             if (centerPos < meanVertexPos) {
                 node.childA->triangles.push_back(tri);
-                maxPosA = fmaxf(maxPosA, getTriangleMaxPos(tri, axis));
             } else {
                 node.childB->triangles.push_back(tri);
-                minPosB = fminf(minPosB, getTriangleMinPos(tri, axis));
             }
         }
 
-        node.childA->bbox_min = node.bbox_min.copy();
-        node.childA->bbox_max = node.bbox_max.copy();
-        node.childB->bbox_max = node.bbox_max.copy();
-        node.childB->bbox_min = node.bbox_min.copy();
-        if (axis == 0) {
-            node.childA->bbox_max.x = maxPosA;
-            node.childB->bbox_min.x = minPosB;
-        } else if (axis == 1) {
-            node.childA->bbox_max.y = maxPosA;
-            node.childB->bbox_min.y = minPosB;
-        } else {
-            node.childA->bbox_max.z = maxPosA;
-            node.childB->bbox_min.z = minPosB;
+        node.childA->bbox_min = Vec3(1e12f, 1e12f, 1e12f);
+        node.childA->bbox_max = Vec3(-1e12f, -1e12f, -1e12f);
+        for (const float* tri : node.childA->triangles) {
+            for (int v = 0; v < 3; v++) {
+                node.childA->bbox_min.x = fminf(node.childA->bbox_min.x, tri[v * 3 + 0]);
+                node.childA->bbox_min.y = fminf(node.childA->bbox_min.y, tri[v * 3 + 1]);
+                node.childA->bbox_min.z = fminf(node.childA->bbox_min.z, tri[v * 3 + 2]);
+                node.childA->bbox_max.x = fmaxf(node.childA->bbox_max.x, tri[v * 3 + 0]);
+                node.childA->bbox_max.y = fmaxf(node.childA->bbox_max.y, tri[v * 3 + 1]);
+                node.childA->bbox_max.z = fmaxf(node.childA->bbox_max.z, tri[v * 3 + 2]);
+            }
+        }
+
+        node.childB->bbox_min = Vec3(1e12f, 1e12f, 1e12f);
+        node.childB->bbox_max = Vec3(-1e12f, -1e12f, -1e12f);
+        for (const float* tri : node.childB->triangles) {
+            for (int v = 0; v < 3; v++) {
+                node.childB->bbox_min.x = fminf(node.childB->bbox_min.x, tri[v * 3 + 0]);
+                node.childB->bbox_min.y = fminf(node.childB->bbox_min.y, tri[v * 3 + 1]);
+                node.childB->bbox_min.z = fminf(node.childB->bbox_min.z, tri[v * 3 + 2]);
+                node.childB->bbox_max.x = fmaxf(node.childB->bbox_max.x, tri[v * 3 + 0]);
+                node.childB->bbox_max.y = fmaxf(node.childB->bbox_max.y, tri[v * 3 + 1]);
+                node.childB->bbox_max.z = fmaxf(node.childB->bbox_max.z, tri[v * 3 + 2]);
+            }
         }
 
         node.triangles.clear();
@@ -164,7 +171,7 @@ namespace BVH
 
 
     void splitRecursive(BVHTempNode *node) {
-        if (node->depth >= BVH_DEPTH) {
+        if (node->depth >= BVH_DEPTH || node->triangles.size() <= BVH_NODE_MIN_TRIS) {
             return;
         }
         splitNode(*node);
