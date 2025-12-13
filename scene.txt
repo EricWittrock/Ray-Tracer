@@ -49,15 +49,15 @@ TYPE 2
 P1 0.5
 
 DEF_MATERIAL standard_mat
-TYPE 3
+TYPE 5
 COLOR 1.0 1.0 1.0
 P1 0.05
 P2 0.3
 
 DEF_MATERIAL standard_mat_orange
-TYPE 4
+TYPE 5
 COLOR 1.0 0.52 0.12
-P1 0.1
+P1 0.6
 P2 0.3
 
 DEF_MATERIAL mirror_mat

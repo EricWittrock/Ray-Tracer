@@ -13,6 +13,7 @@
 #include "sceneParser.h"
 #include "material.h"
 #include "BVHcreator.h"
+#include "rayAttractor.h"
 
 // __device__ Vec3 castRay(Ray& ray) {
 //     Vec3 color(0.0f, 1.0f, 0.0f);
@@ -274,7 +275,6 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                     int envImgY = static_cast<int>(backdropY) % height;
                     int envI = (envImgY * width + envImgX) * 3;
                     color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
-                    ;
                 }else {
                     color += BACKGROUND_COLOR * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
                 }
@@ -309,24 +309,13 @@ __global__ void initScene(Object** objects) {
     }
 }
 
-void buildScene(Object** objects) {
-    objects[0] = new Sphere(Vec3(0.0f, -1.2f, -5.0f), 2.0f);
-    objects[1] = new Sphere(Vec3(3.0f, 3.0f, -5.4f), 1.5f);
-    
-
-    // objects[2] = &m;
-}
-
-void loadAssets() {
-
-}
-
 
 int main(int argc, char** argv) 
 {
     SceneParser parser;
-    parser.parseFromFile("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\scene.txt");
+    parser.parseFromFile(SCENE_CONFIG_PATH);
 
+    // load meshes
     float *cpuTris;
     size_t numTris;
     BVH::BVHNode* bvh_nodes = nullptr;
@@ -339,6 +328,7 @@ int main(int argc, char** argv)
     cudaMalloc((void **)&gpuBVHNodes, num_bvh_nodes * sizeof(BVH::BVHNode));
     cudaMemcpy(gpuBVHNodes, bvh_nodes, num_bvh_nodes * sizeof(BVH::BVHNode), cudaMemcpyKind::cudaMemcpyHostToDevice);
 
+    // load materials
     const Material *materials;
     size_t numMaterials;
     parser.getMaterialData(&materials, &numMaterials);
@@ -377,12 +367,14 @@ int main(int argc, char** argv)
     cudaMemcpy(pixels_cpu, pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
 
 
-    Texture::saveImgData("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\output\\output.png", pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
+    Texture::saveImgData(OUTPUT_IMAGE_PATH, pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
     delete[] pixels_cpu;
 
-
-    // cudaFree(d_img);
-    // stbi_image_free(h_img);
+    cudaFree(pixels);
+    cudaFree(gpuTris);
+    cudaFree(gpuBVHNodes);
+    cudaFree(gpuMaterials);
+    cudaFree(gpuEnvTex);
 
     std::cout << "Saved output\n";
     return 0;
