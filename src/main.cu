@@ -262,17 +262,22 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 Vec3::normalize(ray.direction);
 
             } else {
-                // hit the emissive backdrop
-                const int width = 4096; // TODO: don't hardcode dimensions
-                const int height = 2048;
-                float backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0f * 3.14159f) + 0.5f;
-                float backdropY = -asin(ray.direction.y) / (2.0f * 3.14159f) + 0.5f;
-                backdropX *= width;
-                backdropY *= height;
-                int envImgX = static_cast<int>(backdropX) % width; // wrap around
-                int envImgY = static_cast<int>(backdropY) % height;
-                int envI = (envImgY * width + envImgX) * 3;
-                color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
+                if (ENABLE_SKYBOX) {
+                    // hit the emissive backdrop
+                    const int width = 4096; // TODO: don't hardcode dimensions
+                    const int height = 2048;
+                    float backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0f * 3.14159f) + 0.5f;
+                    float backdropY = -asin(ray.direction.y) / (2.0f * 3.14159f) + 0.5f;
+                    backdropX *= width;
+                    backdropY *= height;
+                    int envImgX = static_cast<int>(backdropX) % width; // wrap around
+                    int envImgY = static_cast<int>(backdropY) % height;
+                    int envI = (envImgY * width + envImgX) * 3;
+                    color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
+                    ;
+                }else {
+                    color += BACKGROUND_COLOR * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
+                }
                 break;
             }
         }
