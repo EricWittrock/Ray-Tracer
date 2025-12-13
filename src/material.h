@@ -47,6 +47,12 @@ public:
             case 2:
                 return reflectType2(ray, normal, hitPos, material, randState);
                 break;
+            case 3:
+                reflectType3(ray, normal, hitPos, material, randState);
+                break;
+            case 4:
+                reflectType4(ray, normal, hitPos, material, randState);
+                break;
             default:
                 ray.emission = Vec3(1.0f, 0.0f, 1.0f); // the color of error
                 return true;  
@@ -95,8 +101,7 @@ private:
                 curand_normal(randState),
                 curand_normal(randState)
             );
-            // ray.direction.reflect((normal + randVec * material.p2).normalize());
-            ray.direction = normal + randSphereVec(randState);
+            ray.direction.reflect((normal + randVec * material.p2).normalize());
         }
         
         ray.marchForward(0.0001f);
@@ -173,8 +178,20 @@ private:
     __device__ void reflectType3(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
         Vec3 color = Vec3::fromColorInt(material.color);
+        ray.diffuseMultiplier = ray.diffuseMultiplier * color;
         ray.position = hitPos;
         ray.direction = normal + randSphereVec(randState);
+        ray.marchForward(0.0001f);
+    }
+
+    // metal
+    __device__ void reflectType4(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
+    {
+        Vec3 color = Vec3::fromColorInt(material.color);
+        ray.diffuseMultiplier = ray.diffuseMultiplier * color;
+        ray.position = hitPos;
+        ray.direction.reflect(normal);
+        ray.direction += randSphereVec(randState) * material.p2;
         ray.marchForward(0.0001f);
     }
 };

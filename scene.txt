@@ -41,6 +41,7 @@ TYPE 1
 
 DEF_MATERIAL light_mat
 TYPE 1
+COLOR 1.0 1.0 1.0
 P1 20.0
 
 DEF_MATERIAL glass_mat
@@ -48,8 +49,15 @@ TYPE 2
 P1 0.5
 
 DEF_MATERIAL standard_mat
-TYPE 0
+TYPE 3
+COLOR 1.0 1.0 1.0
 P1 0.05
+P2 0.3
+
+DEF_MATERIAL standard_mat_orange
+TYPE 4
+COLOR 1.0 0.52 0.12
+P1 0.1
 P2 0.3
 
 DEF_MATERIAL mirror_mat
@@ -59,7 +67,7 @@ P1 1.0
 
 DEF_OBJ obj2
 MODEL sphereModel
-MATERIAL standard_mat
+MATERIAL standard_mat_orange
 
 DEF_OBJ obj3
 MODEL planeModel
