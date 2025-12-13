@@ -57,9 +57,31 @@ public:
 
 private:
 
+    __device__ Vec3 randSphereVec(curandState* randState) const 
+    {
+        float r1 = curand_uniform(randState);
+        float r2 = curand_uniform(randState);
+        float theta = r1 * 2.0f * 3.14159265358979323846f;
+        float phi = acosf(2.0f * r2 - 1.0f);
+        float x = sinf(phi) * cosf(theta);
+        float y = sinf(phi) * sinf(theta);
+        float z = cosf(phi);
+        return Vec3(x, y, z);
+    }
+
+    __device__ Vec3 randHemisphereVec(const Vec3 &normal, curandState* randState) const 
+    {
+        Vec3 inUnitSphere = randSphereVec(randState);
+        if (inUnitSphere.dot(normal) > 0.0f) {
+            return inUnitSphere;
+        } else {
+            return inUnitSphere * -1.0f;
+        }
+    }
+
     __device__ void reflectType0(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
-        Vec3 color(0.0f, 1.0f, 0.0f);
+        Vec3 color = Vec3::fromColorInt(material.color);
         ray.position = hitPos;
         
         if(curand_uniform(randState) < material.p1) { // clear coat reflection
@@ -73,7 +95,8 @@ private:
                 curand_normal(randState),
                 curand_normal(randState)
             );
-            ray.direction.reflect((normal + randVec * material.p2).normalize());
+            // ray.direction.reflect((normal + randVec * material.p2).normalize());
+            ray.direction = normal + randSphereVec(randState);
         }
         
         ray.marchForward(0.0001f);
@@ -82,7 +105,7 @@ private:
     // emissive
     __device__ void reflectType1(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
-        Vec3 color(1.0f, 1.0f, 1.0f);
+        Vec3 color = Vec3::fromColorInt(material.color);
         ray.emission = color * material.p1; // p1 = emission strength
     }
 
@@ -144,5 +167,14 @@ private:
         // ray.refractiveIndex += p1;
         ray.marchForward(0.0001f);
         return false;
+    }
+
+    // lambertian
+    __device__ void reflectType3(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
+    {
+        Vec3 color = Vec3::fromColorInt(material.color);
+        ray.position = hitPos;
+        ray.direction = normal + randSphereVec(randState);
+        ray.marchForward(0.0001f);
     }
 };
