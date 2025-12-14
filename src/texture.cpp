@@ -46,14 +46,19 @@ void Texture::save(std::string path) const {
     delete[] img;
 }
 
-void Texture::saveImgData(const char* path, const float* data, int width, int height) {
-    unsigned char* img = new unsigned char[width * height * 3];
-    for (int i = 0; i < width * height * 3; ++i) {
-        img[i] = static_cast<unsigned char>(data[i] * 255);
+void Texture::saveImgData(const char* path, const float* data, int width, int height, bool isHDR) {
+    if (isHDR) {
+        stbi_write_hdr(path, width, height, 3, data);
+    } else {
+        unsigned char* img = new unsigned char[width * height * 3];
+        for (int i = 0; i < width * height * 3; ++i) {
+            img[i] = static_cast<unsigned char>(data[i] * 255);
+        }
+        stbi_write_png(path, width, height, 3, img, width * 3);
+        delete[] img;
     }
-    stbi_write_png(path, width, height, 3, img, width * 3);
-    delete[] img;
 }
+
 
 void Texture::saveImgData(const char* path, const unsigned char* data, int width, int height) {
     stbi_write_png(path, width, height, 3, data, width * 3);

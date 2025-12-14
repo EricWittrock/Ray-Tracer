@@ -257,7 +257,9 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     }
 
     color /= static_cast<float>(scene_configs->numSamples);
-    toneMap(color);
+    if (!HDRI_EXPORT) {
+        toneMap(color);
+    }
     // if (color.x > 1.0f) color.x = 1.0f;
     // if (color.y > 1.0f) color.y = 1.0f;
     // if (color.z > 1.0f) color.z = 1.0f;
@@ -269,8 +271,6 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     pixels[idx + 0] = color.x;
     pixels[idx + 1] = color.y;
     pixels[idx + 2] = color.z;
-    
-
 }
 
 
@@ -357,8 +357,8 @@ int main(int argc, char** argv)
     float* pixels_cpu = new float[scene_configs.outputWidth * scene_configs.outputHeight * 3];
     cudaMemcpy(pixels_cpu, out_pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
 
-
-    Texture::saveImgData(OUTPUT_IMAGE_PATH, pixels_cpu, scene_configs.outputWidth, scene_configs.outputHeight);
+    std::string file_name = std::string(OUTPUT_IMAGE_PATH) + (HDRI_EXPORT ? ".hdr" : ".png");
+    Texture::saveImgData(file_name.c_str(), pixels_cpu, scene_configs.outputWidth, scene_configs.outputHeight, HDRI_EXPORT);
     delete[] pixels_cpu;
 
     cudaFree(out_pixels);

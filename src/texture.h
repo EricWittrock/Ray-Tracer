@@ -36,7 +36,7 @@ public:
         return width * height * 3 * sizeof(float);
     }
 
-    static void saveImgData(const char* path, const float* data, int width, int height);
+    static void saveImgData(const char* path, const float* data, int width, int height, bool isHDR);
     static void saveImgData(const char* path, const unsigned char* data, int width, int height);
 
 

@@ -42,7 +42,7 @@ P1 20.0
 
 DEF_MATERIAL glass_mat
 TYPE 2
-P1 0.5
+P1 0.9
 
 DEF_MATERIAL standard_mat
 TYPE 3
