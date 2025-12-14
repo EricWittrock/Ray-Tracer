@@ -69,26 +69,6 @@ __device__ bool rayTriangleIntersect(Ray& ray, const Vec3& v0, const Vec3& v1, c
     }
 }
 
-__device__ Vec3 barycentric(const Vec3& a, const Vec3& b, const Vec3& c, const Vec3& pos) {
-    Vec3 v0 = b - a;
-    Vec3 v1 = c - a;
-    Vec3 v2 = pos - a;
-    float d00 = v0.dot(v0);
-    float d01 = v0.dot(v1);
-    float d11 = v1.dot(v1);
-    float d20 = v2.dot(v0);
-    float d21 = v2.dot(v1);
-    float denom = d00 * d11 - d01 * d01;
-    float v = (d11 * d20 - d01 * d21) / denom;
-    float w = (d00 * d21 - d01 * d20) / denom;
-    float u = 1.0f - v - w;
-    return Vec3(u, v, w);
-}
-
-__device__ Vec3 interpolateNormal(const Vec3& n0, const Vec3& n1, const Vec3& n2, const Vec3& bary) {
-    return (n0 * bary.x + n1 * bary.y + n2 * bary.z).normalize();
-}
-
 
 __device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node) {
     // Check if origin is inside the AABB
@@ -223,7 +203,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                     }
                 }
             }
-            else { //////// no BVH (for testing purposes)
+            else { //////// disabled BVH (for testing purposes)
                 for (int i = 0; i < numTris; i+=25) {
                     Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
                     Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
@@ -247,20 +227,10 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
             // break;
 
             if (hitTriIndex >= 0) { // hit
-                Vec3 v0(tris[hitTriIndex + 0], tris[hitTriIndex + 1], tris[hitTriIndex + 2]);
-                Vec3 v1(tris[hitTriIndex + 3], tris[hitTriIndex + 4], tris[hitTriIndex + 5]);
-                Vec3 v2(tris[hitTriIndex + 6], tris[hitTriIndex + 7], tris[hitTriIndex + 8]);
-
-                Vec3 n0(tris[hitTriIndex + 9], tris[hitTriIndex + 10], tris[hitTriIndex + 11]);
-                Vec3 n1(tris[hitTriIndex + 12], tris[hitTriIndex + 13], tris[hitTriIndex + 14]);
-                Vec3 n2(tris[hitTriIndex + 15], tris[hitTriIndex + 16], tris[hitTriIndex + 17]);
-                Vec3 bary = barycentric(v0, v1, v2, hitPos);
-                Vec3 hitNormal = interpolateNormal(n0, n1, n2, bary);
-
                 int hitIndex = static_cast<int>(tris[hitTriIndex + 24]);
                 Material hitMaterial = materials[hitIndex];
 
-                bool terminated = hitMaterial.reflect(ray, hitNormal, hitPos, hitMaterial, &randState);
+                bool terminated = hitMaterial.reflect(ray, hitPos, hitTriIndex, tris, textures, &randState);
                 if (terminated) {
                     color += ray.emission * ray.diffuseMultiplier;
                     break;
@@ -270,15 +240,13 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
             } else {
                 if (ENABLE_SKYBOX && scene_configs->envTextureWidth > 0) {
                     // hit the emissive backdrop
-                    const int width = 4096; // TODO: don't hardcode dimensions
-                    const int height = 2048;
                     float backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0f * 3.14159f) + 0.5f;
                     float backdropY = -asin(ray.direction.y) / (2.0f * 3.14159f) + 0.5f;
-                    backdropX *= width;
-                    backdropY *= height;
-                    int envImgX = static_cast<int>(backdropX) % width; // wrap around
-                    int envImgY = static_cast<int>(backdropY) % height;
-                    int envI = (envImgY * width + envImgX) * 3;
+                    backdropX *= scene_configs->envTextureWidth;
+                    backdropY *= scene_configs->envTextureHeight;
+                    int envImgX = static_cast<int>(backdropX) % scene_configs->envTextureWidth; // wrap around
+                    int envImgY = static_cast<int>(backdropY) % scene_configs->envTextureHeight;
+                    int envI = (envImgY * scene_configs->envTextureWidth + envImgX) * 3;
                     color += Vec3(textures[envI + 0], textures[envI + 1], textures[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
                 }else {
                     color += BACKGROUND_COLOR * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;

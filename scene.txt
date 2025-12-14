@@ -9,6 +9,8 @@ DEF_IMAGE backgroundTexture
 # PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
 
+DEF_IMAGE planetTexture 
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\earth.jpg
 
 DEF_MODEL monkeyModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj
@@ -48,6 +50,13 @@ COLOR 1.0 1.0 1.0
 P1 0.05
 P2 0.3
 
+DEF_MATERIAL planet_mat
+TYPE 5
+COLOR 1.0 1.0 1.0
+P1 0.05
+P2 0.3
+TEXTURE planetTexture
+
 DEF_MATERIAL standard_mat_orange
 TYPE 5
 COLOR 1.0 0.52 0.12
@@ -61,11 +70,11 @@ P1 1.0
 
 DEF_OBJ obj2
 MODEL sphereModel
-MATERIAL standard_mat_orange
+MATERIAL planet_mat
 
 DEF_OBJ obj3
 MODEL planeModel
-MATERIAL standard_mat
+MATERIAL planet_mat
 
 DEF_OBJ obj_light
 MODEL sphereModel
@@ -81,7 +90,7 @@ SCALE 1.0
 
 ADD_OBJECT someobj2
 OBJECT obj2
-POSITION 0.0 0.0 -2.5
+POSITION 0.01 0.02 -2.5
 SCALE 1.0
 
 ADD_OBJECT someobj1
