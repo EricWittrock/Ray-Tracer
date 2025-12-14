@@ -80,7 +80,7 @@ public:
                 reflectType4(ray, normal, hitPos, randState);
                 break;
             case 5:
-                reflectType5(ray, normal, hitPos, clr, randState);
+                reflectType5(ray, normal, hitPos, randState);
                 break;
             default:
                 ray.emission = Vec3(1.0f, 0.0f, 1.0f); // the color of error
@@ -197,17 +197,19 @@ private:
         ray.emission = clr * p1; // p1 = emission strength
     }
 
-    // dielectric
+    // legacy dielectric (no pdf)
     __device__ bool reflectType2(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState) const 
     {
         ray.position = hitPos;
         float dotNorm = ray.direction.dot(normal); // if < 0: hits from the outside
         bool fromOutside = (dotNorm < 0.0f);
         float oldRI = ray.refractiveIndex;
-        float newRI = (dotNorm < 0.0f) ? oldRI + p1 : oldRI - p1; // p1 = change in refractive index
+        float newRI = fromOutside ? oldRI + p1 : oldRI - p1; // p1 = change in refractive index
+        Vec3 normal2 = fromOutside ? normal : normal * -1.0f;
 
-        float ri = oldRI / newRI;
-        float cos_theta = std::fminf(-ray.direction.dot(normal), 1.0f);
+        float ri = oldRI / newRI; // equivalent to float ri = fromOutside ? (1.0f/1.5f) : (1.5f/1.0f);
+        // float ri = fromOutside ? (1.0f/1.5f) : (1.5f/1.0f);
+        float cos_theta = std::fminf(-ray.direction.dot(normal2), 1.0f);
         float sin_theta = std::sqrt(1.0f - cos_theta*cos_theta);
         bool will_refract = ri * sin_theta <= 1.0f;
 
@@ -218,14 +220,9 @@ private:
             if (r0 > curand_uniform(randState)) will_refract = false;
         }
 
-        if(!fromOutside) will_refract = true; // always refract when exiting
-
         if (will_refract) { // refract
-            if (dotNorm > 0.0f) {
-                ray.direction.refract(normal * -1, ri);
-            } else {
-                ray.direction.refract(normal, ri);
-            }
+            ray.direction.refract(normal2, ri);
+            ray.refractiveIndex = newRI;
         }
         else // reflect
         { 
@@ -234,25 +231,10 @@ private:
                 curand_normal(randState),
                 curand_normal(randState)
             );
-            if (dotNorm > 0.0f) { // hit from inside
-                ray.direction.reflect(normal * -1 + randVec * 0.02f);
-                // ray.emission = Vec3(0.0f, 1.0f, 0.0f);
-            } else { // hit from outside
-                ray.direction.reflect(normal + randVec * 0.02f);
-                // ray.emission = Vec3(1.0f, 0.0f, 1.0f);
-            }
-            // return true;
-            
-            // ray.direction.reflect((normal + randVec * 0.05f).normalize());
+            ray.direction.reflect(normal2);
         }
 
 
-        
-
-        // ray.position = hitPos;
-        // float eta = ray.refractiveIndex / p1; // p1 = refractive index of material
-        // ray.direction.refract(normal, eta);
-        // ray.refractiveIndex += p1;
         ray.marchForward(1e-5f);
         return false;
     }
@@ -282,7 +264,7 @@ private:
     }
 
     // lambertian pdf
-    __device__ void reflectType5(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, Vec3 clr, curandState* randState) const 
+    __device__ void reflectType5(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState) const 
     {
         Vec3 normal2 = (normal.dot(ray.direction) < 0.0f) ? normal : (normal * -1.0f);
         Vec3 incoming_direction = ray.direction; // save incoming direction
@@ -316,7 +298,7 @@ private:
 
         // float scatter_pdf = lambertian_scatter_pdf(incoming_direction, outgoing_direction, normal2);
         
-        // Vec3 clr = Vec3::fromColorInt(color);
+        Vec3 clr = Vec3::fromColorInt(color);
         ray.diffuseMultiplier = ray.diffuseMultiplier * clr * brdf / pdf_value;
         ray.direction = outgoing_direction;
         ray.marchForward(1e-5f);
