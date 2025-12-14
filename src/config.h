@@ -1,14 +1,14 @@
 #pragma once
 
 #define MAX_BOUNCES 6
-#define ANTIALIASING_SAMPLES 4
 
 #define ENABLE_SKYBOX true
 #define BACKGROUND_BRIGHTNESS 0.5f
 #define BACKGROUND_COLOR Vec3(1.0f, 1.0f, 0.05f)
 
+#define ENABLE_ANTIALIASING true
 #define HDRI_EXPORT false
-#define ENABLE_SPHERES true
+#define ENABLE_SPHERES false
 #define ENABLE_BVH true
 #define BVH_DEPTH 16
 #define BVH_NODE_MIN_TRIS 4

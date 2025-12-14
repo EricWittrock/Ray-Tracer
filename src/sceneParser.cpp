@@ -99,7 +99,6 @@ void SceneParser::parseFromFile(const char* path) {
         else if (first_word == "ADD_OBJECT") {
             scope = DEF_OBJECT_INSTANCE;
             name = get_unique_string();
-            std::cout << "object instance name: " << name << std::endl;
             SceneAssets::ObjectInstance object_instance;
             object_instance.name = name;
             object_instances.push_back(object_instance);
@@ -135,7 +134,6 @@ void SceneParser::parseFromFile(const char* path) {
         else if (first_word == "ADD_SPHERE") {
             scope = DEF_SPHERE;
             name = get_unique_string();
-            std::cout << "sphere name: " << name << std::endl;
             SceneAssets::Sphere sphere;
             sphere.name = name;
             spheres.push_back(sphere);   
@@ -395,7 +393,7 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
 
     int sphereDataSize = 0;
     if (ENABLE_SPHERES) {
-        sphereDataSize = 1 + spheres.size() * 5;
+        sphereDataSize = 1 + static_cast<int>(spheres.size()) * 5;
     }
     std::cout << "Total length of all triangle data: " << total_length << std::endl;
     std::cout << "Number of models: " << models.size() << std::endl;
@@ -412,16 +410,16 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
 
     BVH::createBVH(all_tris + sphereDataSize, total_length, bvh_nodes, num_bvh_nodes);
     int sphereOffset = 0;
-    all_tris[sphereOffset++] = static_cast<float>(spheres.size()) + 0.0001f;
-
+    
     if (ENABLE_SPHERES) {
+        all_tris[sphereOffset++] = static_cast<float>(spheres.size()) + 0.0001f;
         for (SceneAssets::Sphere& sphere : spheres) {
             int materialIndex = getMaterialIndexByName(sphere.material_id);
             all_tris[sphereOffset++] = sphere.position.x;
             all_tris[sphereOffset++] = sphere.position.y;
             all_tris[sphereOffset++] = sphere.position.z;
             all_tris[sphereOffset++] = sphere.radius;
-            all_tris[sphereOffset++] = materialIndex;
+            all_tris[sphereOffset++] = static_cast<float>(materialIndex) + 0.0001f;
         }
     }
 
