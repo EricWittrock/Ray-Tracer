@@ -120,6 +120,14 @@ public:
         return Vec3(r, g, b);
     }
 
+    __host__ __device__ static Vec3 lerp(const Vec3& v1, const Vec3& v2, float t) {
+        return Vec3(
+            v1.x + t * (v2.x - v1.x),
+            v1.y + t * (v2.y - v1.y),
+            v1.z + t * (v2.z - v1.z)
+        );
+    }
+
     __host__ __device__ inline void operator = (const Vec3& v) {
         x = v.x;
         y = v.y;

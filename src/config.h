@@ -6,6 +6,7 @@
 #define BACKGROUND_BRIGHTNESS 0.5f
 #define BACKGROUND_COLOR Vec3(1.0f, 1.0f, 0.05f)
 
+#define ENABLE_DEFOCUS_BLUR true
 #define ENABLE_ANTIALIASING true
 #define HDRI_EXPORT false
 #define ENABLE_SPHERES false

@@ -116,6 +116,14 @@ __device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node)
     return tmin;
 }
 
+__device__ Vec3 randomPointInDisk(const Vec3& up, const Vec3& right, float radius, curandState* state) {
+    float theta = 2.0f * 3.14159f * curand_uniform(state);
+    float r = sqrtf(curand_uniform(state)) * radius;
+    float x = r * cosf(theta);
+    float y = r * sinf(theta);
+    return up * y + right * x;
+}
+
 __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -131,18 +139,8 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
         spheres = all_tris + 1;
     }
 
-
     curandState randState;
     curand_init(37811, x + y * scene_configs->outputWidth, 0, &randState); // 37811 is a big arbitrary prime
-
-    Vec3 up(0.0f, 1.0f, 0.0f);
-    Vec3 right(1.0f, 0.0f, 0.0f);
-    Matrix rot = Matrix::rotationMatrix(scene_configs->cameraRot);
-    up = rot * up;
-    right = rot * right;
-    Vec3::normalize(up);
-    Vec3::normalize(right);
-    Vec3 forward = up.cross(right).normalize();
 
     const float sx = static_cast<float>(x) / scene_configs->outputWidth - 0.5f;
     const float sy = - static_cast<float>(y) / scene_configs->outputHeight + 0.5f;
@@ -150,6 +148,24 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
     Vec3 color(0.0f, 0.0f, 0.0f);
 
     for (int k = 0; k < scene_configs->numSamples; k++) {
+        float animation_time = curand_uniform(&randState);
+        Vec3 eulerRot = Vec3::lerp(
+            scene_configs->cameraRot,
+            scene_configs->cameraRot + scene_configs->cameraAngularVel,
+            animation_time
+        );
+        Vec3 camPos = Vec3::lerp(
+            scene_configs->cameraPos,
+            scene_configs->cameraPos + scene_configs->cameraVel,
+            animation_time
+        );
+        Matrix rot = Matrix::rotationMatrix(eulerRot);
+        Vec3 up = rot * Vec3(0.0f, 1.0f, 0.0f);
+        Vec3 right = rot * Vec3(1.0f, 0.0f, 0.0f);
+        Vec3::normalize(up);
+        Vec3::normalize(right);
+        Vec3 forward = up.cross(right).normalize();
+
         float antialias_r1 = 0.0f;
         float antialias_r2 = 0.0f;
         if (ENABLE_ANTIALIASING) {
@@ -159,8 +175,18 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
         Vec3 s = forward * scene_configs->focalLength
         + right * (sx + antialias_r1 / scene_configs->outputWidth)
         + up * (sy + antialias_r2 / scene_configs->outputHeight);
+
         Vec3 dir = s.normalize();
-        Ray ray(scene_configs->cameraPos, dir);
+
+        Vec3 rayOrigin = camPos;
+        if (scene_configs->apertureSize > 1e-5f && ENABLE_DEFOCUS_BLUR) {
+            Vec3 lensOffset = randomPointInDisk(up, right, scene_configs->apertureSize * 0.5f, &randState);
+            Vec3 focusPoint = camPos + dir * scene_configs->focusDistance;
+            rayOrigin = camPos + lensOffset;
+            dir = (focusPoint - rayOrigin).normalize();
+        }
+
+        Ray ray(rayOrigin, dir);
 
         for (int j = 0; j<MAX_BOUNCES; j++) {
             Vec3 hitPos;

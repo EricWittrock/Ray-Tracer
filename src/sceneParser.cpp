@@ -90,9 +90,29 @@ void SceneParser::parseFromFile(const char* path) {
                 std::stof(nth_word(line, 3))
             );
         } 
+        else if (first_word == "SET_CAM_VEL") {
+            scene_configs.cameraVel = Vec3(
+                std::stof(nth_word(line, 1)),
+                std::stof(nth_word(line, 2)),
+                std::stof(nth_word(line, 3))
+            );
+        }
+        else if (first_word == "SET_CAM_ANGULAR_VEL") {
+            scene_configs.cameraAngularVel = Vec3(
+                std::stof(nth_word(line, 1)),
+                std::stof(nth_word(line, 2)),
+                std::stof(nth_word(line, 3))
+            );
+        }
         else if (first_word == "SET_FOCAL_LENGTH") {
             scene_configs.focalLength = std::stof(nth_word(line, 1));
-        } 
+        }
+        else if (first_word == "SET_APERTURE_RADIUS") {
+            scene_configs.apertureSize = std::stof(nth_word(line, 1));
+        }
+        else if (first_word == "SET_FOCUS_DISTANCE") {
+            scene_configs.focusDistance = std::stof(nth_word(line, 1));
+        }
         else if (first_word == "SET_BACKGROUND") {
             background_image_name = nth_word(line, 1);
         } 
