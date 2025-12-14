@@ -90,6 +90,17 @@ private:
         }
     }
 
+    __device__ Vec3 randCosineHemisphere(const Vec3 &normal, curandState* randState) const 
+    {
+        Vec3 inUnitSphere = randSphereVec(randState);
+        float cos_theta = inUnitSphere.dot(normal);
+        if (cos_theta > 0.0f) {
+            return inUnitSphere * sqrtf(cos_theta);
+        } else {
+            return inUnitSphere * -1.0f * sqrtf(-cos_theta);
+        }
+    }
+
     __device__ float lambertian_scatter_pdf(const Vec3& dir_in, const Vec3& dir_out, const Vec3& normal) const {
         float cos_theta = normal.dot(dir_out);
         return cos_theta < 0 ? 0 : cos_theta / 3.14159f;
@@ -120,6 +131,10 @@ private:
     // emissive
     __device__ void reflectType1(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
+        if (ray.direction.dot(normal) > 0.0f) {
+            ray.emission = Vec3(0.0f, 0.0f, 0.0f);
+            return;
+        }
         Vec3 color = Vec3::fromColorInt(material.color);
         ray.emission = color * material.p1; // p1 = emission strength
     }
@@ -212,24 +227,40 @@ private:
     __device__ void reflectType5(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
         Vec3 normal2 = (normal.dot(ray.direction) < 0.0f) ? normal : (normal * -1.0f);
+        Vec3 incoming_direction = ray.direction; // save incoming direction
+        
+        ray.position = hitPos;
 
-        // RayAttractor rayAttractor(Vec3(5.5f, 5.5f, -2.5f), Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f));
-        // Vec3 direction;
-        // if (curand_uniform(randState) < 0.5f) {
-        //     direction = rayAttractor.generate_random(hitPos, randState);
-        // } else {
-        //     direction = randHemisphereVec(normal, randState);
-        // }
-        // float pdf_value = rayAttractor.pdf_value(hitPos, direction) * 0.5f + (1.0f / (2 * 3.14159f)) * 0.5f;
+        bool importanceSample = false;
+        float pdf_value;
+        Vec3 outgoing_direction;
+        
+        if (importanceSample) {
+            RayAttractor rayAttractor(Vec3(0.0f, 2.95f, -5.01f), Vec3(0.0f, 0.0f, 1.0f), Vec3(1.0f, 0.0f, 0.0f));
+            if (curand_uniform(randState) < 0.5f) {
+                outgoing_direction = rayAttractor.generate_random(hitPos, randState);
+            } else {
+                // outgoing_direction = randHemisphereVec(normal2, randState);
+                outgoing_direction = randCosineHemisphere(normal2, randState);
+            }
+            float cos_theta = normal2.dot(outgoing_direction);
+            if (cos_theta < 0.0f) cos_theta = 0.0f;
+            float brdf = cos_theta / 3.14159f;
+            pdf_value = rayAttractor.pdf_value(hitPos, outgoing_direction) * 0.5f + (brdf) * 0.5f;
+        } else {
+            outgoing_direction = randHemisphereVec(normal2, randState);
+            // outgoing_direction = randCosineHemisphere(normal2, randState);
+            pdf_value = 1.0f / (2 * 3.14159f);
+        }
+        float cos_theta = normal2.dot(outgoing_direction);
+        if (cos_theta < 0.0f) cos_theta = 0.0f;
+        float brdf = cos_theta / 3.14159f;
 
-        Vec3 direction = randHemisphereVec(normal2, randState);
-        float pdf_value = 1.0f / (2 * 3.14159f);
-        float scatter_pdf = lambertian_scatter_pdf(ray.direction, direction, normal2);
+        // float scatter_pdf = lambertian_scatter_pdf(incoming_direction, outgoing_direction, normal2);
         
         Vec3 color = Vec3::fromColorInt(material.color);
-        ray.diffuseMultiplier = ray.diffuseMultiplier * color * scatter_pdf / pdf_value;
-        ray.position = hitPos;
-        ray.direction = direction;
+        ray.diffuseMultiplier = ray.diffuseMultiplier * color * brdf / pdf_value;
+        ray.direction = outgoing_direction;
         ray.marchForward(1e-5f);
     }
 };

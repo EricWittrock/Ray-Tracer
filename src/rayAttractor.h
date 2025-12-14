@@ -10,17 +10,17 @@ class RayAttractor {
 public:
     __device__ RayAttractor(const Vec3& pos, const Vec3& u, const Vec3& v) {
         this->pos = pos;
+        this->area = u.cross(v).length() * 0.25f;
         this->u = u.normalize();
         this->v = v.normalize();
         normal = this->u.cross(this->v).normalize();
-        area = u.length() * v.length();
     }
 
-    // ray quad intersectionay 
+    // ray-quad intersection 
     __device__ bool ray_intersect(const Vec3& origin, const Vec3& direction, Vec3 &intersection) const {
         float denom = normal.dot(direction);
 
-        if (fabs(denom) < 1e-8) return false;
+        if (fabs(denom) < 1e-12) return false;
 
         float t = (pos - origin).dot(normal) / denom;
         if (t <= 0) return false;

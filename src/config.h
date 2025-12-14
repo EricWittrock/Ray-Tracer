@@ -3,7 +3,7 @@
 #define IMAGE_WIDTH 512
 #define IMAGE_HEIGHT IMAGE_WIDTH
 #define FOCAL_LENGTH 0.3f
-#define NUM_SAMPLES 500
+#define NUM_SAMPLES 1000
 #define MAX_BOUNCES 6
 #define SCENE_OFFSET Vec3(0.0f, 0.0f, 0.0f)
 
