@@ -114,7 +114,7 @@ private:
             ray.direction.reflect((normal + randVec * material.p2).normalize());
         }
         
-        ray.marchForward(0.0001f);
+        ray.marchForward(1e-5f);
     }
 
     // emissive
@@ -180,18 +180,21 @@ private:
         // float eta = ray.refractiveIndex / p1; // p1 = refractive index of material
         // ray.direction.refract(normal, eta);
         // ray.refractiveIndex += p1;
-        ray.marchForward(0.0001f);
+        ray.marchForward(1e-5f);
         return false;
     }
 
     // lambertian
     __device__ void reflectType3(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
+        Vec3 normal2 = (normal.dot(ray.direction) < 0.0f) ? normal : (normal * -1.0f);
+        
         Vec3 color = Vec3::fromColorInt(material.color);
         ray.diffuseMultiplier = ray.diffuseMultiplier * color;
         ray.position = hitPos;
-        ray.direction = normal + randSphereVec(randState);
-        ray.marchForward(0.0001f);
+        Vec3 randomDir = randSphereVec(randState);
+        ray.direction = (normal2 + randomDir).normalize();
+        ray.marchForward(1e-5f);
     }
 
     // metal
@@ -202,24 +205,31 @@ private:
         ray.position = hitPos;
         ray.direction.reflect(normal);
         ray.direction += randSphereVec(randState) * material.p1;
-        ray.marchForward(0.0001f);
+        ray.marchForward(1e-5f);
     }
 
     // lambertian pdf
     __device__ void reflectType5(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const 
     {
-        RayAttractor rayAttractor(Vec3(5.5f, 5.5f, -2.5f), Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 0.0f, 1.0f));
-        Vec3 direction = rayAttractor.generate_random(hitPos, randState);
-        float pdf_value = rayAttractor.pdf_value(hitPos, direction);
+        Vec3 normal2 = (normal.dot(ray.direction) < 0.0f) ? normal : (normal * -1.0f);
 
-        // Vec3 direction = randHemisphereVec(normal, randState);
-        // float pdf_value = 1.0f / (2 * 3.14159f);
-        float scatter_pdf = lambertian_scatter_pdf(ray.direction, direction, normal);
+        // RayAttractor rayAttractor(Vec3(5.5f, 5.5f, -2.5f), Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 0.0f, 0.0f));
+        // Vec3 direction;
+        // if (curand_uniform(randState) < 0.5f) {
+        //     direction = rayAttractor.generate_random(hitPos, randState);
+        // } else {
+        //     direction = randHemisphereVec(normal, randState);
+        // }
+        // float pdf_value = rayAttractor.pdf_value(hitPos, direction) * 0.5f + (1.0f / (2 * 3.14159f)) * 0.5f;
+
+        Vec3 direction = randHemisphereVec(normal2, randState);
+        float pdf_value = 1.0f / (2 * 3.14159f);
+        float scatter_pdf = lambertian_scatter_pdf(ray.direction, direction, normal2);
         
         Vec3 color = Vec3::fromColorInt(material.color);
         ray.diffuseMultiplier = ray.diffuseMultiplier * color * scatter_pdf / pdf_value;
         ray.position = hitPos;
         ray.direction = direction;
-        ray.marchForward(0.0001f);
+        ray.marchForward(1e-5f);
     }
 };

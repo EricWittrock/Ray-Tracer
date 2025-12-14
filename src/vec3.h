@@ -59,6 +59,31 @@ public:
         z = r_out_perp.z + r_out_parallel.z;
     }
 
+    __host__ __device__ inline void rotate(const Vec3& r) {
+        float temp1;
+        float temp2;
+        float cx = std::cos(r.x);
+        float sx = std::sin(r.x);
+        temp1 =  cx * y - sx * z;
+        temp2 =  sx * y + cx * z;
+        y = temp1; 
+        z = temp2;
+
+        float cy = std::cos(r.y);
+        float sy = std::sin(r.y);
+        temp1 =  cy * x + sy * z;
+        temp2 = -sy * x + cy * z;
+        x = temp1; 
+        z = temp2;
+
+        float cz = std::cos(r.z);
+        float sz = std::sin(r.z);
+        temp1 =  cz * x - sz * y;
+        temp2 =  sz * x + cz * y;
+        x = temp1; 
+        y = temp2;
+    }
+
     __host__ __device__ inline Vec3 normalize() const {
         float invlen = 1.0f / length();
         if (invlen > 0) {

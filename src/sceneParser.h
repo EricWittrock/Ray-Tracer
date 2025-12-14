@@ -35,6 +35,7 @@ namespace SceneAssets
         std::string name;
         std::string object_name;
         Vec3 position;
+        Vec3 rotation;
         float scale;
     };
 }

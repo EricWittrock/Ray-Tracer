@@ -152,10 +152,10 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     Vec3 forward = up.cross(right).normalize();
 
 
-    const float sx = static_cast<float>(x + 0.5f) / IMAGE_WIDTH - 0.5f;
-    const float sy = 0.5f - static_cast<float>(y + 0.5f) / IMAGE_WIDTH;
+    const float sx = (static_cast<float>(x) + 0.5f) / IMAGE_WIDTH - 0.5f;
+    const float sy = -((static_cast<float>(y) + 0.5f) / IMAGE_WIDTH - 0.5f);
     Vec3 s = forward * FOCAL_LENGTH + right * sx + up * sy;
-    Vec3 dir = (s - cam_position).normalize();
+    Vec3 dir = s.normalize();
 
     Vec3 color(0.0f, 0.0f, 0.0f);
 
@@ -168,75 +168,80 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
             float minDistSqr = 1e12f;
 
             ////////////////////////////////////////////////////////////////////////////////
-            BVH::BVHNode* stack[BVH_DEPTH];
-            int stackPtr = 0;
-            // stack[stackPtr++] = &bvhNodes[0];
-            if (AABBIntersectDistance(ray, bvhNodes[0]) < 1e12) {
-                stack[stackPtr++] = &bvhNodes[0];
-            }
+            if (ENABLE_BVH) {
+                BVH::BVHNode* stack[BVH_DEPTH];
+                int stackPtr = 0;
+                // stack[stackPtr++] = &bvhNodes[0];
+                if (AABBIntersectDistance(ray, bvhNodes[0]) < 1e12) {
+                    stack[stackPtr++] = &bvhNodes[0];
+                }
 
-            Vec3 numTests(0.0f, 0.0f, 0.0f);
-            while(stackPtr > 0) {
-                BVH::BVHNode* node = stack[--stackPtr];
+                Vec3 numTests(0.0f, 0.0f, 0.0f);
+                while(stackPtr > 0) {
+                    BVH::BVHNode* node = stack[--stackPtr];
 
-                // if (AABBIntersectDistance(ray, *node) > 1e12) {
-                //     continue;
-                // }
+                    // if (AABBIntersectDistance(ray, *node) > 1e12) {
+                    //     continue;
+                    // }
 
-                if (node->childAIndex == -1) { // leaf node
-                    int startTriData = node->startTriDataOffs;
-                    int endTriData = startTriData + node->triDataLength;
-                    for (int i = startTriData; i < endTriData; i+=25) {
-                        Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
-                        Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
-                        Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
-                        
-                        numTests.x += 0.1f;
-                        Vec3 pos;
-                        if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
-                            float newDistSqr = (pos - ray.position).lengthSqr();
-                            if (newDistSqr < minDistSqr) {
-                                minDistSqr = newDistSqr;
-                                hitPos = pos;
-                                hitTriIndex = i;
+                    if (node->childAIndex == -1) { // leaf node
+                        int startTriData = node->startTriDataOffs;
+                        int endTriData = startTriData + node->triDataLength;
+                        for (int i = startTriData; i < endTriData; i+=25) {
+                            Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
+                            Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
+                            Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
+                            
+                            numTests.x += 0.1f;
+                            Vec3 pos;
+                            if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
+                                float newDistSqr = (pos - ray.position).lengthSqr();
+                                if (newDistSqr < minDistSqr) {
+                                    minDistSqr = newDistSqr;
+                                    hitPos = pos;
+                                    hitTriIndex = i;
+                                }
                             }
                         }
-                    }
-                } else {
-                    // add nearest box last so it gets processed first
-                    numTests.y += 1.0f;
-                    float distAsqr = AABBIntersectDistance(ray, bvhNodes[node->childAIndex]);
-                    float distBsqr = AABBIntersectDistance(ray, bvhNodes[node->childBIndex]);
-                    distAsqr = distAsqr * distAsqr;
-                    distBsqr = distBsqr * distBsqr;
-
-                    if (distAsqr < distBsqr) {
-                        if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
-                        if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
                     } else {
-                        if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
-                        if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
+                        // add nearest box last so it gets processed first
+                        numTests.y += 1.0f;
+                        float distAsqr = AABBIntersectDistance(ray, bvhNodes[node->childAIndex]);
+                        float distBsqr = AABBIntersectDistance(ray, bvhNodes[node->childBIndex]);
+                        distAsqr = distAsqr * distAsqr;
+                        distBsqr = distBsqr * distBsqr;
+
+                        if (distAsqr < distBsqr) {
+                            if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
+                            if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
+                        } else {
+                            if (distAsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childAIndex];
+                            if (distBsqr < minDistSqr) stack[stackPtr++] = &bvhNodes[node->childBIndex];
+                        }
+                        // stack[stackPtr++] = &bvhNodes[node->childAIndex];
+                        // stack[stackPtr++] = &bvhNodes[node->childBIndex];
                     }
-                    // stack[stackPtr++] = &bvhNodes[node->childAIndex];
-                    // stack[stackPtr++] = &bvhNodes[node->childBIndex];
+                }
+            }
+            else { //////// no BVH (for testing purposes)
+                for (int i = 0; i < numTris; i+=25) {
+                    Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
+                    Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
+                    Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
+                    
+                    Vec3 pos;
+                    if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
+                        float newDistSqr = (pos - ray.position).lengthSqr();
+                        if (newDistSqr < minDistSqr) {
+                            minDistSqr = newDistSqr;
+                            hitPos = pos;
+                            hitTriIndex = i;
+                        }
+                    }
                 }
             }
 
-            // for (int i = 0; i < numTris; i+=25) {
-            //     Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
-            //     Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
-            //     Vec3 v2(tris[i + 6], tris[i + 7], tris[i + 8]);
-                
-            //     Vec3 pos;
-            //     if (rayTriangleIntersect(ray, v0, v1, v2, pos)) {
-            //         float newDistSqr = (pos - ray.position).lengthSqr();
-            //         if (newDistSqr < minDistSqr) {
-            //             minDistSqr = newDistSqr;
-            //             hitPos = pos;
-            //             hitTriIndex = i;
-            //         }
-            //     }
-            // }
+
             ////////////////////////////////////////////////////////////////////////////////
             // color += numTests * 0.01;
             // break;

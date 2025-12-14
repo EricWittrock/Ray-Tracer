@@ -7,6 +7,7 @@
 #include <vector>
 #include "vec3.h"
 #include "object.h"
+#include "matrix.h"
 
 class Model {
 private:
@@ -43,8 +44,8 @@ public:
         return getDataLength() * sizeof(float);
     }
 
-    __host__ void loadMesh(const char* filename, Vec3& translation, float scale, int materialIndex) 
-    {
+    __host__ void loadMesh(const char* filename, Vec3& translation, float scale, Vec3& rotation, int materialIndex) 
+    {   
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cout << "Could not open model file: " << filename << std::endl;
@@ -58,6 +59,8 @@ public:
         std::vector<int> tri_indices;
         std::vector<float> tris;
 
+        Matrix rotationMatrix = Matrix::rotationMatrix(rotation);
+
         while (std::getline(file, line)) {
             const char c0 = line[0];
             const char c1 = line[1];
@@ -65,16 +68,22 @@ public:
             if (c0 == 'v' && c1 == ' ') {
                 float x, y, z;
                 sscanf(line.c_str(), "v %f %f %f", &x, &y, &z);
-                verts.push_back(x * scale + translation.x);
-                verts.push_back(y * scale + translation.y);
-                verts.push_back(z * scale + translation.z);
+
+                Vec3 v = rotationMatrix * Vec3(x, y, z);
+                v = v * scale + translation;
+
+                verts.push_back(v.x);
+                verts.push_back(v.y);
+                verts.push_back(v.z);
             }
             else if (c0 == 'v' && c1 == 'n') {
                 float x, y, z;
                 sscanf(line.c_str(), "vn %f %f %f", &x, &y, &z);
-                norms.push_back(x);
-                norms.push_back(y);
-                norms.push_back(z);
+
+                Vec3 n = rotationMatrix * Vec3(x, y, z);
+                norms.push_back(n.x);
+                norms.push_back(n.y);
+                norms.push_back(n.z);
             }
             else if (c0 == 'v' && c1 == 't') {
                 float u, v;

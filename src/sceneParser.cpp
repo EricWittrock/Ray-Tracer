@@ -217,10 +217,17 @@ void SceneParser::parseLineObjectInstance(const std::string& line, const std::st
             std::stof(nth_word(line, 1)),
             std::stof(nth_word(line, 2)),
             std::stof(nth_word(line, 3))
-        );
+        ) + SCENE_OFFSET;
     } 
     else if(first_word == "SCALE") {
         object_instance->scale = std::stof(nth_word(line, 1));
+    }
+    else if (first_word == "ROTATION") {
+        object_instance->rotation = Vec3(
+            std::stof(nth_word(line, 1)),
+            std::stof(nth_word(line, 2)),
+            std::stof(nth_word(line, 3))
+        );
     }
     else {
         std::cout << "Unknown OBJECT INSTANCE definition command: " << first_word << std::endl;
@@ -320,7 +327,7 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
         std::string model_name = object->model_name;
         SceneAssets::Model* model_info = getModelByName(model_name);
         Model model;
-        model.loadMesh(model_info->path.c_str(), object_instance.position, object_instance.scale, materialIndex);
+        model.loadMesh(model_info->path.c_str(), object_instance.position, object_instance.scale, object_instance.rotation, materialIndex);
         models.push_back(std::move(model));
     }
 

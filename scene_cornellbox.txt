@@ -42,20 +42,20 @@ TYPE 1
 DEF_MATERIAL light_mat
 TYPE 1
 COLOR 1.0 1.0 1.0
-P1 20.0
+P1 6.0
 
 DEF_MATERIAL glass_mat
 TYPE 2
 P1 0.5
 
 DEF_MATERIAL standard_mat
-TYPE 5
+TYPE 3
 COLOR 1.0 1.0 1.0
 P1 0.05
 P2 0.3
 
 DEF_MATERIAL standard_mat_orange
-TYPE 5
+TYPE 3
 COLOR 1.0 0.52 0.12
 P1 0.6
 P2 0.3
@@ -64,33 +64,87 @@ DEF_MATERIAL mirror_mat
 TYPE 0
 P1 1.0
 
+DEF_MATERIAL white_mat
+TYPE 5
+COLOR 1.0 1.0 1.0
+P1 0.05
+P2 0.3
 
-DEF_OBJ obj2
+DEF_MATERIAL red_mat
+TYPE 5
+COLOR 1.0 0.0 0.0
+P1 0.05
+P2 0.3
+
+DEF_MATERIAL green_mat
+TYPE 5
+COLOR 0.0 1.0 0.0
+P1 0.05
+P2 0.3
+
+DEF_OBJ white_wall
+MODEL planeModel
+MATERIAL white_mat
+
+DEF_OBJ red_wall
+MODEL planeModel
+MATERIAL red_mat
+
+DEF_OBJ green_wall
+MODEL planeModel
+MATERIAL green_mat
+
+DEF_OBJ obj_light_plane
+MODEL planeModel
+MATERIAL light_mat
+
+DEF_OBJ obj_sphere
 MODEL sphereModel
 MATERIAL standard_mat_orange
 
-DEF_OBJ obj3
-MODEL planeModel
-MATERIAL standard_mat
-
-DEF_OBJ obj_light
+DEF_OBJ obj_sphere2
 MODEL sphereModel
 MATERIAL light_mat
 
-
 SET_BACKGROUND backgroundTexture
 
-ADD_OBJECT light
-OBJECT obj_light
-POSITION 5.5 5.5 -2.5
+ADD_OBJECT sphere
+OBJECT obj_sphere
+POSITION 0.0 -2.0 -4.01
 SCALE 1.0
 
-ADD_OBJECT someobj2
-OBJECT obj2
-POSITION 0.0 0.0 -2.5
+ADD_OBJECT light_obj_plane
+OBJECT obj_light_plane
+POSITION 0.0 2.98 -5.01
+ROTATION 0.0 0.0 0.0
 SCALE 1.0
 
-ADD_OBJECT someobj1
-OBJECT obj3
-POSITION 0.0 -1.01 -4.9
-SCALE 15.0
+ADD_OBJECT wall_floor
+OBJECT white_wall
+POSITION 0.0 -3.01 -5.01
+ROTATION 0.0 0.0 0.0
+SCALE 3.03
+
+ADD_OBJECT wall_back
+OBJECT white_wall
+POSITION 0.0 0.01 -8.0
+ROTATION 1.57079 0.0 0.0
+SCALE 3.03
+
+ADD_OBJECT wall_red
+OBJECT red_wall
+POSITION -3 0.01 -5.0
+ROTATION 0.0 0.0 1.57079
+SCALE 3.03
+
+ADD_OBJECT wall_green
+OBJECT green_wall
+POSITION 3 0.01 -5.0
+ROTATION 0.0 0.0 -1.57079
+SCALE 3.03
+
+ADD_OBJECT wall_ceil
+OBJECT white_wall
+POSITION 0.01 3.0 -5.0
+ROTATION 0.0 0.0 0.0
+SCALE 3.03
