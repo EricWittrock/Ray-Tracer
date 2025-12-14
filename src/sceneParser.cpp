@@ -1,5 +1,6 @@
 #include "sceneParser.h"
 #include "model.h"
+#include "texture.h"
 
 namespace {
     enum Scope {
@@ -58,34 +59,34 @@ void SceneParser::parseFromFile(const char* path) {
 
         std::string first_word = nth_word(line, 0);
 
-        if (first_word == "SET_IMAGE_WIDTH") {
-            image_width = std::stoi(nth_word(line, 1));
+        if (first_word == "SET_OUTPUT_WIDTH") {
+            scene_configs.outputWidth = std::stoi(nth_word(line, 1));
         } 
+        else if (first_word == "SET_OUTPUT_HEIGHT") {
+            scene_configs.outputHeight = std::stoi(nth_word(line, 1));
+        }
         else if (first_word == "SET_NUM_SAMPLES") {
-            num_samples = std::stoi(nth_word(line, 1));
-        } 
-        else if (first_word == "SET_MAX_BOUNCES") {
-            max_bounces = std::stoi(nth_word(line, 1));
-        } 
+            scene_configs.numSamples = std::stoi(nth_word(line, 1));
+        }
         else if (first_word == "SET_CAM_POS") {
-            camera_pos = Vec3(
+            scene_configs.cameraPos = Vec3(
                 std::stof(nth_word(line, 1)),
                 std::stof(nth_word(line, 2)),
                 std::stof(nth_word(line, 3))
             );
         } 
-        else if (first_word == "SET_CAM_LOOK_AT") {
-            camera_look_at = Vec3(
+        else if (first_word == "SET_CAM_ROTATION") {
+            scene_configs.cameraRot = Vec3(
                 std::stof(nth_word(line, 1)),
                 std::stof(nth_word(line, 2)),
                 std::stof(nth_word(line, 3))
             );
         } 
         else if (first_word == "SET_FOCAL_LENGTH") {
-            focal_length = std::stof(nth_word(line, 1));
+            scene_configs.focalLength = std::stof(nth_word(line, 1));
         } 
         else if (first_word == "SET_BACKGROUND") {
-            background_texture_name = nth_word(line, 1);
+            background_image_name = nth_word(line, 1);
         } 
         else if (first_word == "ADD_OBJECT") {
             scope = DEF_OBJECT_INSTANCE;
@@ -150,9 +151,6 @@ void SceneParser::parseLineModelDef(const std::string& line, const std::string& 
 
     if(first_word == "PATH") {
         model->path = nth_word(line, 1);
-    } 
-    else if(first_word == "MTL_PATH") {
-        model->mtl_path = nth_word(line, 1);
     }
     else {
         std::cout << "Unknown MODEL definition command: " << first_word << std::endl;
@@ -182,6 +180,14 @@ void SceneParser::parseLineMaterialDef(const std::string& line, const std::strin
     }
     else if(first_word == "P3") {
         material->p3 = std::stof(nth_word(line, 1));
+    }
+    else if (first_word == "TEXTURE") {
+        if (material->image_names.size() < 3) {
+            material->image_names.push_back(nth_word(line, 1));
+        } else {
+            std::cout << "Too many textures for material: " << name << std::endl;
+            exit(1);
+        }
     }
     else {
         std::cout << "Unknown MATERIAL definition command: " << first_word << std::endl;
@@ -353,9 +359,26 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
     *arr_len = total_length;
 }
 
-void SceneParser::getMaterialData(const Material** out_materials, size_t* num_materials) {
+void SceneParser::getMaterialData(const Material** out_materials, size_t* num_materials, const float** out_texture, size_t* texture_length) {
     size_t count = materials.size();
     Material* material_array = new Material[count];
+
+    std::vector<float> pixels = std::vector<float>();
+
+    if (background_image_name != "") {
+        SceneAssets::Texture* texture = getTextureByName(background_image_name);
+        Texture tex(texture->path.c_str());
+        texture->offset = pixels.size(); // 0
+        const float* pixel_data = tex.getData();
+        for (int i = 0; i < tex.dataLength(); i++) {
+            pixels.push_back(pixel_data[i]);
+        }
+        texture->isLoaded = true;
+        texture->width = tex.width;
+        texture->height = tex.height;
+        scene_configs.envTextureWidth = tex.width;
+        scene_configs.envTextureHeight = tex.height;
+    }
 
     for (int i = 0; i < count; i++) {
         material_array[i].type = materials[i].type;
@@ -363,9 +386,52 @@ void SceneParser::getMaterialData(const Material** out_materials, size_t* num_ma
         material_array[i].p1 = materials[i].p1;
         material_array[i].p2 = materials[i].p2;
         material_array[i].p3 = materials[i].p3;
-        // material_array[i].albedo = this->materials[i].albedo;
+
+        for (int j = 0; j < materials[i].image_names.size(); j++) {
+            std::string image_name = materials[i].image_names[j];
+            SceneAssets::Texture* texture = getTextureByName(image_name);
+            if (!texture->isLoaded) {
+                Texture tex(texture->path.c_str());
+                texture->offset = pixels.size();
+                const float* pixel_data = tex.getData();
+                for (int i = 0; i < tex.dataLength(); i++) {
+                    pixels.push_back(pixel_data[i]);
+                }
+                texture->isLoaded = true;
+                texture->width = tex.width;
+                texture->height = tex.height;
+            }
+
+            if (j == 0) {
+                material_array[i].image1_offset = texture->offset;
+            } else if (j == 1) {
+                material_array[i].image2_offset = texture->offset;
+            } else if (j == 2) {
+                material_array[i].image3_offset = texture->offset;
+            } else {
+                std::cout << "Too many textures for material: " << materials[i].name << std::endl;
+                exit(1);
+            }
+
+            if (material_array[i].image_height != 0 && (material_array[i].image_height != texture->height || material_array[i].image_width != texture->width)) {
+                std::cout << "Textures must have the same dimensions for a material." << std::endl;
+                exit(1);
+            } else {
+                material_array[i].image_height = texture->height;
+                material_array[i].image_width = texture->width;
+            }
+        }
     }
+
+    float *texture_array = new float[pixels.size()];
+    std::memcpy(texture_array, pixels.data(), pixels.size() * sizeof(float));
+    *out_texture = texture_array;
+    *texture_length = pixels.size();
 
     *out_materials = material_array;
     *num_materials = count;
+}
+
+void SceneParser::getSceneConfigs(SceneConfigs* out_configs) {
+    *out_configs = scene_configs;
 }

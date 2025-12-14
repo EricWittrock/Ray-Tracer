@@ -136,7 +136,7 @@ __device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node)
     return tmin;
 }
 
-__global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* envTex) {
+__global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= IMAGE_WIDTH || y >= IMAGE_WIDTH) return;
@@ -152,8 +152,8 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     Vec3 forward = up.cross(right).normalize();
 
 
-    const float sx = (static_cast<float>(x) + 0.5f) / IMAGE_WIDTH - 0.5f;
-    const float sy = -((static_cast<float>(y) + 0.5f) / IMAGE_WIDTH - 0.5f);
+    const float sx = static_cast<float>(x) / IMAGE_WIDTH - 0.5f;
+    const float sy = - static_cast<float>(y) / IMAGE_WIDTH + 0.5f;
     Vec3 s = forward * FOCAL_LENGTH + right * sx + up * sy;
     Vec3 dir = s.normalize();
 
@@ -268,7 +268,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 Vec3::normalize(ray.direction);
 
             } else {
-                if (ENABLE_SKYBOX) {
+                if (ENABLE_SKYBOX && scene_configs->envTextureWidth > 0) {
                     // hit the emissive backdrop
                     const int width = 4096; // TODO: don't hardcode dimensions
                     const int height = 2048;
@@ -279,7 +279,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                     int envImgX = static_cast<int>(backdropX) % width; // wrap around
                     int envImgY = static_cast<int>(backdropY) % height;
                     int envI = (envImgY * width + envImgX) * 3;
-                    color += Vec3(envTex[envI + 0], envTex[envI + 1], envTex[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
+                    color += Vec3(textures[envI + 0], textures[envI + 1], textures[envI + 2]) * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
                 }else {
                     color += BACKGROUND_COLOR * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
                 }
@@ -317,10 +317,17 @@ __global__ void initScene(Object** objects) {
 
 int main(int argc, char** argv) 
 {
+    SceneConfigs scene_configs;
     SceneParser parser;
     parser.parseFromFile(SCENE_CONFIG_PATH);
+    parser.getSceneConfigs(&scene_configs);
 
-    // load meshes
+    // =================== Load Scene Configs ===================
+    SceneConfigs* gpuSceneConfigs;
+    cudaMalloc((void **)&gpuSceneConfigs, sizeof(SceneConfigs));
+    cudaMemcpy(gpuSceneConfigs, &scene_configs, sizeof(SceneConfigs), cudaMemcpyKind::cudaMemcpyHostToDevice);
+
+    // =================== Load Meshes ===================
     float *cpuTris;
     size_t numTris;
     BVH::BVHNode* bvh_nodes = nullptr;
@@ -333,24 +340,25 @@ int main(int argc, char** argv)
     cudaMalloc((void **)&gpuBVHNodes, num_bvh_nodes * sizeof(BVH::BVHNode));
     cudaMemcpy(gpuBVHNodes, bvh_nodes, num_bvh_nodes * sizeof(BVH::BVHNode), cudaMemcpyKind::cudaMemcpyHostToDevice);
 
-    // load materials
+    // =================== Load Materials and Textures ===================
+    const float *cpuImageData;
+    size_t imageDataLength;
     const Material *materials;
     size_t numMaterials;
-    parser.getMaterialData(&materials, &numMaterials);
+    parser.getMaterialData(&materials, &numMaterials, &cpuImageData, &imageDataLength);
     Material *gpuMaterials;
     cudaMalloc((void **)&gpuMaterials, numMaterials * sizeof(Material));
     cudaMemcpy(gpuMaterials, materials, numMaterials * sizeof(Material), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    float *gpuImageData;
+    cudaMalloc((void **)&gpuImageData, imageDataLength * sizeof(float));
+    cudaMemcpy(gpuImageData, cpuImageData, imageDataLength * sizeof(float), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    std::cout << "Image data length: " << imageDataLength << std::endl;
 
     size_t img_bytes = IMAGE_WIDTH * IMAGE_WIDTH * 3 * sizeof(float);
-    float* pixels;
-    cudaMalloc(&pixels, img_bytes);
+    float* out_pixels;
+    cudaMalloc(&out_pixels, img_bytes);
 
-    Texture environmentMap = Texture("C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr");
-    float* gpuEnvTex;
-    cudaMalloc(&gpuEnvTex, environmentMap.sizeBytes());
-    cudaMemcpy(gpuEnvTex, environmentMap.getData(), environmentMap.sizeBytes(), cudaMemcpyKind::cudaMemcpyHostToDevice);
-    std::cout << "env texture size: " << environmentMap.width << "x" << environmentMap.height << "\n";
-
+    // =================== Render ===================
     dim3 block(16, 16);
     dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x, (IMAGE_WIDTH + block.y - 1) / block.y);
 
@@ -359,7 +367,17 @@ int main(int argc, char** argv)
     cudaEventCreate(&stop);
     cudaEventRecord(start);
     std::cout << "begin rendering" << std::endl;
-    render2<<<grid, block>>>(pixels, gpuTris, static_cast<int>(numTris), gpuBVHNodes, gpuMaterials, gpuEnvTex);
+
+    render2<<<grid, block>>>(
+        out_pixels,
+        gpuTris,
+        static_cast<int>(numTris),
+        gpuBVHNodes,
+        gpuMaterials,
+        gpuImageData,
+        gpuSceneConfigs
+    );
+    
     cudaDeviceSynchronize();
     std::cout << "done rendering" << std::endl;
     cudaEventRecord(stop);
@@ -369,17 +387,18 @@ int main(int argc, char** argv)
     std::cout << "Render time: " << milliseconds << " ms" << std::endl;
 
     float* pixels_cpu = new float[IMAGE_WIDTH * IMAGE_WIDTH * 3];
-    cudaMemcpy(pixels_cpu, pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
+    cudaMemcpy(pixels_cpu, out_pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
 
 
     Texture::saveImgData(OUTPUT_IMAGE_PATH, pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
     delete[] pixels_cpu;
 
-    cudaFree(pixels);
+    cudaFree(out_pixels);
     cudaFree(gpuTris);
     cudaFree(gpuBVHNodes);
     cudaFree(gpuMaterials);
-    cudaFree(gpuEnvTex);
+    cudaFree(gpuSceneConfigs);
+    cudaFree(gpuImageData);
 
     std::cout << "Saved output\n";
     return 0;

@@ -1,26 +1,20 @@
-SET_IMAGE_WIDTH 256
+SET_OUTPUT_WIDTH 256
+SET_OUTPUT_HEIGHT 256
 SET_NUM_SAMPLES 250
-SET_MAX_BOUNCES 6
 SET_FOCAL_LENGTH 0.3
-#SET_CAM_FORWARD 0.0 0.0 1.0
 SET_CAM_POS 0.0 0.0 0.0
-#TODO: SET_CAM_LOOK_AT
-SET_CAM_LOOK_AT 0.0 100.0 0.0
+SET_CAM_ROTATION 0.0 0.0 0.0
 
 DEF_IMAGE backgroundTexture 
 # PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
 
 
-
-
 DEF_MODEL monkeyModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj
-MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.mtl
 
 DEF_MODEL cubeModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.obj
-MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.mtl
 
 DEF_MODEL sphereModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\sphere.obj

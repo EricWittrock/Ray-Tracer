@@ -1,6 +1,5 @@
 SET_IMAGE_WIDTH 256
 SET_NUM_SAMPLES 250
-SET_MAX_BOUNCES 6
 SET_FOCAL_LENGTH 0.3
 #SET_CAM_FORWARD 0.0 0.0 1.0
 SET_CAM_POS 0.0 0.0 0.0
@@ -11,6 +10,8 @@ DEF_IMAGE backgroundTexture
 # PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
 
+DEF_IMAGE planetTexture 
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\earth.jpg
 
 
 
@@ -42,14 +43,14 @@ TYPE 1
 DEF_MATERIAL light_mat
 TYPE 1
 COLOR 1.0 1.0 1.0
-P1 10.0
+P1 20.0
 
 DEF_MATERIAL glass_mat
 TYPE 2
 P1 0.5
 
 DEF_MATERIAL standard_mat
-TYPE 3
+TYPE 5
 COLOR 1.0 1.0 1.0
 P1 0.05
 P2 0.3
@@ -64,87 +65,33 @@ DEF_MATERIAL mirror_mat
 TYPE 0
 P1 1.0
 
-DEF_MATERIAL white_mat
-TYPE 5
-COLOR 1.0 1.0 1.0
-P1 0.05
-P2 0.3
 
-DEF_MATERIAL red_mat
-TYPE 5
-COLOR 0.9 0.15 0.15
-P1 0.05
-P2 0.3
-
-DEF_MATERIAL green_mat
-TYPE 5
-COLOR 0.15 0.9 0.15
-P1 0.05
-P2 0.3
-
-DEF_OBJ white_wall
-MODEL planeModel
-MATERIAL white_mat
-
-DEF_OBJ red_wall
-MODEL planeModel
-MATERIAL red_mat
-
-DEF_OBJ green_wall
-MODEL planeModel
-MATERIAL green_mat
-
-DEF_OBJ obj_light_plane
-MODEL planeModel
-MATERIAL light_mat
-
-DEF_OBJ obj_sphere
+DEF_OBJ obj2
 MODEL sphereModel
 MATERIAL standard_mat_orange
 
-DEF_OBJ obj_sphere2
+DEF_OBJ obj3
+MODEL planeModel
+MATERIAL standard_mat
+
+DEF_OBJ obj_light
 MODEL sphereModel
 MATERIAL light_mat
 
+
 SET_BACKGROUND backgroundTexture
 
-ADD_OBJECT sphere
-OBJECT obj_sphere
-POSITION 0.0 -2.0 -4.01
+ADD_OBJECT light
+OBJECT obj_light
+POSITION 5.5 5.5 -2.5
 SCALE 1.0
 
-ADD_OBJECT light_obj_plane
-OBJECT obj_light_plane
-POSITION 0.0 2.95 -5.01
-ROTATION 3.14159 0.0 0.0
-SCALE 0.5
+ADD_OBJECT someobj2
+OBJECT obj2
+POSITION 0.0 0.0 -2.5
+SCALE 1.0
 
-ADD_OBJECT wall_floor
-OBJECT white_wall
-POSITION 0.0 -3.01 -5.01
-ROTATION 0.0 0.0 0.0
-SCALE 3.03
-
-ADD_OBJECT wall_back
-OBJECT white_wall
-POSITION 0.0 0.01 -8.0
-ROTATION 1.57079 0.0 0.0
-SCALE 3.03
-
-ADD_OBJECT wall_red
-OBJECT red_wall
-POSITION -3 0.01 -5.0
-ROTATION 0.0 0.0 1.57079
-SCALE 3.03
-
-ADD_OBJECT wall_green
-OBJECT green_wall
-POSITION 3 0.01 -5.0
-ROTATION 0.0 0.0 -1.57079
-SCALE 3.03
-
-ADD_OBJECT wall_ceil
-OBJECT white_wall
-POSITION 0.01 3.0 -5.0
-ROTATION 0.0 0.0 0.0
-SCALE 3.03
+ADD_OBJECT someobj1
+OBJECT obj3
+POSITION 0.0 -1.01 -4.9
+SCALE 15.0

@@ -231,7 +231,7 @@ private:
         
         ray.position = hitPos;
 
-        bool importanceSample = false;
+        bool importanceSample = true;
         float pdf_value;
         Vec3 outgoing_direction;
         

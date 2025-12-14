@@ -6,17 +6,21 @@
 #include <string>
 #include "material.h"
 #include "BVHcreator.h"
+#include "sceneConfigs.h"
 
 namespace SceneAssets
 {
     struct Texture {
         std::string name;
         std::string path;
+        bool isLoaded = false;
+        int offset = false;
+        int width = 0;
+        int height = 0;
     };
     struct Model {
         std::string name;
         std::string path;
-        std::string mtl_path;
     };
     struct Material {
         std::string name;
@@ -25,6 +29,7 @@ namespace SceneAssets
         float p1;
         float p2;
         float p3;
+        std::vector<std::string> image_names;
     };
     struct Object {
         std::string name;
@@ -42,31 +47,13 @@ namespace SceneAssets
 
 class SceneParser {
 public:
-    Vec3 camera_pos;
-    Vec3 camera_look_at;
-    float focal_length;
-    int num_samples;
-    int max_bounces;
-    int image_width;
-    int num_objects;
-    int num_assets;
-    std::string background_texture_name;
+    SceneConfigs scene_configs;
     std::vector<SceneAssets::Texture> textures;
     std::vector<SceneAssets::Model> models;
     std::vector<SceneAssets::Material> materials;
     std::vector<SceneAssets::Object> objects;
     std::vector<SceneAssets::ObjectInstance> object_instances;
-
-    SceneParser::SceneParser()
-    : camera_pos(0.0f, 0.0f, 0.0f),
-      camera_look_at(0.0f, 0.0f, -1.0f),
-      focal_length(0.3f),
-      num_samples(1),
-      max_bounces(1),
-      image_width(512),
-      num_objects(0),
-      num_assets(0),
-      background_texture_name("") {}
+    std::string background_image_name = "";
 
     void parseFromFile(const char* path);
 
@@ -86,5 +73,6 @@ public:
     int getMaterialIndexByName(std::string name);
 
     void getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes);
-    void getMaterialData(const Material** materials, size_t* num_materials);
+    void getMaterialData(const Material** out_materials, size_t* num_materials, const float** out_texture, size_t* texture_length);
+    void getSceneConfigs(SceneConfigs* out_scene_configs);
 };
