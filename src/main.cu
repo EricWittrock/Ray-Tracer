@@ -135,23 +135,32 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
     curandState randState;
     curand_init(37811, x + y * scene_configs->outputWidth, 0, &randState); // 37811 is a big arbitrary prime
 
-    Vec3 cam_position(0.0f, 0.0f, 0.0f);
     Vec3 up(0.0f, 1.0f, 0.0f);
     Vec3 right(1.0f, 0.0f, 0.0f);
+    Matrix rot = Matrix::rotationMatrix(scene_configs->cameraRot);
+    up = rot * up;
+    right = rot * right;
     Vec3::normalize(up);
     Vec3::normalize(right);
     Vec3 forward = up.cross(right).normalize();
 
-
     const float sx = static_cast<float>(x) / scene_configs->outputWidth - 0.5f;
     const float sy = - static_cast<float>(y) / scene_configs->outputHeight + 0.5f;
-    Vec3 s = forward * scene_configs->focalLength + right * sx + up * sy;
-    Vec3 dir = s.normalize();
 
     Vec3 color(0.0f, 0.0f, 0.0f);
 
     for (int k = 0; k < scene_configs->numSamples; k++) {
-        Ray ray(cam_position, dir);
+        float antialias_r1 = 0.0f;
+        float antialias_r2 = 0.0f;
+        if (ENABLE_ANTIALIASING) {
+            antialias_r1 = curand_uniform(&randState) - 0.5f;
+            antialias_r2 = curand_uniform(&randState) - 0.5f;
+        }
+        Vec3 s = forward * scene_configs->focalLength
+        + right * (sx + antialias_r1 / scene_configs->outputWidth)
+        + up * (sy + antialias_r2 / scene_configs->outputHeight);
+        Vec3 dir = s.normalize();
+        Ray ray(scene_configs->cameraPos, dir);
 
         for (int j = 0; j<MAX_BOUNCES; j++) {
             Vec3 hitPos;
