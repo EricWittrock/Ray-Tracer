@@ -9,12 +9,13 @@ namespace {
         DEF_MODEL,
         DEF_MATERIAL,
         DEF_OBJECT,
-        DEF_OBJECT_INSTANCE
+        DEF_OBJECT_INSTANCE,
+        DEF_SPHERE
     };
 }
 
 std::string SceneParser::get_unique_string() {
-    return "str" + std::to_string(unique_string_counter++);
+    return "rand_str_" + std::to_string(unique_string_counter++);
 }
 
 void SceneParser::parseFromFile(const char* path) {
@@ -58,6 +59,9 @@ void SceneParser::parseFromFile(const char* path) {
         } else if (scope == DEF_OBJECT_INSTANCE) {
             parseLineObjectInstance(line, name);
             continue;
+        } else if (scope == DEF_SPHERE) {
+            parseLineSphere(line, name);
+            continue;
         }
 
 
@@ -95,6 +99,7 @@ void SceneParser::parseFromFile(const char* path) {
         else if (first_word == "ADD_OBJECT") {
             scope = DEF_OBJECT_INSTANCE;
             name = get_unique_string();
+            std::cout << "object instance name: " << name << std::endl;
             SceneAssets::ObjectInstance object_instance;
             object_instance.name = name;
             object_instances.push_back(object_instance);
@@ -126,7 +131,16 @@ void SceneParser::parseFromFile(const char* path) {
             SceneAssets::Object object;
             object.name = name;
             objects.push_back(object);
-        } else {
+        }
+        else if (first_word == "ADD_SPHERE") {
+            scope = DEF_SPHERE;
+            name = get_unique_string();
+            std::cout << "sphere name: " << name << std::endl;
+            SceneAssets::Sphere sphere;
+            sphere.name = name;
+            spheres.push_back(sphere);   
+        }
+        else {
             //throw std::runtime_error("Unknown command: " + first_word);
             std::cout << "Unknown command: " << first_word << std::endl;
             exit(1);
@@ -245,6 +259,29 @@ void SceneParser::parseLineObjectInstance(const std::string& line, const std::st
     }
 }
 
+void SceneParser::parseLineSphere(const std::string& line, const std::string& name) {
+    if (!ENABLE_SPHERES) return;
+    SceneAssets::Sphere* sphere = getSphereByName(name);
+    std::string first_word = nth_word(line, 0);
+    if(first_word == "POSITION") {
+        sphere->position = Vec3(
+            std::stof(nth_word(line, 1)),
+            std::stof(nth_word(line, 2)),
+            std::stof(nth_word(line, 3))
+        );
+    } 
+    else if(first_word == "RADIUS") {
+        sphere->radius = std::stof(nth_word(line, 1));
+    } 
+    else if(first_word == "MATERIAL") {
+        sphere->material_id = nth_word(line, 1);
+    }
+    else {
+        std::cout << "Unknown SPHERE definition command: " << first_word << std::endl;
+        exit(1);
+    }
+}
+
 const std::string SceneParser::nth_word(const std::string& line, int n) {
     size_t start = 0;
     size_t end = line.find(' ');
@@ -326,6 +363,16 @@ SceneAssets::ObjectInstance* SceneParser::getObjectInstanceByName(std::string na
     exit(1);
 }
 
+SceneAssets::Sphere* SceneParser::getSphereByName(std::string name) {
+    for (auto& sphere : spheres) {
+        if (sphere.name == name) {
+            return &sphere;
+        }
+    }
+    std::cout << "Sphere not found: " << name << std::endl;
+    exit(1);
+}
+
 void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes) {  
     std::vector<Model> models;
 
@@ -345,28 +392,46 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
     for (auto& model : models) {
         total_length += model.getDataLength();
     }
+
+    int sphereDataSize = 0;
+    if (ENABLE_SPHERES) {
+        sphereDataSize = 1 + spheres.size() * 5;
+    }
     std::cout << "Total length of all triangle data: " << total_length << std::endl;
     std::cout << "Number of models: " << models.size() << std::endl;
 
-    float *all_tris = new float[total_length];
+    float *all_tris = new float[total_length + sphereDataSize];
     size_t offset = 0;
+
     for (auto& model : models) {
         float* model_tris = model.getFaces();
         size_t model_length = model.getDataLength();
-        std::memcpy(all_tris + offset, model_tris, model_length * sizeof(float));
+        std::memcpy(all_tris + offset + sphereDataSize, model_tris, model_length * sizeof(float));
         offset += model_length;
     }
 
-    BVH::createBVH(all_tris, total_length, bvh_nodes, num_bvh_nodes);
-    
+    BVH::createBVH(all_tris + sphereDataSize, total_length, bvh_nodes, num_bvh_nodes);
+    int sphereOffset = 0;
+    all_tris[sphereOffset++] = static_cast<float>(spheres.size()) + 0.0001f;
+
+    if (ENABLE_SPHERES) {
+        for (SceneAssets::Sphere& sphere : spheres) {
+            int materialIndex = getMaterialIndexByName(sphere.material_id);
+            all_tris[sphereOffset++] = sphere.position.x;
+            all_tris[sphereOffset++] = sphere.position.y;
+            all_tris[sphereOffset++] = sphere.position.z;
+            all_tris[sphereOffset++] = sphere.radius;
+            all_tris[sphereOffset++] = materialIndex;
+        }
+    }
+
     *tris = all_tris;
     *arr_len = total_length;
 }
 
 void SceneParser::getMaterialData(const Material** out_materials, size_t* num_materials, const float** out_texture, size_t* texture_length) {
-    size_t count = materials.size();
-    Material* material_array = new Material[count];
-
+    size_t material_count = materials.size();
+    Material* material_array = new Material[material_count];
     std::vector<float> pixels = std::vector<float>();
 
     if (background_image_name != "") {
@@ -384,46 +449,16 @@ void SceneParser::getMaterialData(const Material** out_materials, size_t* num_ma
         scene_configs.envTextureHeight = tex.height;
     }
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < material_count; i++) {
         material_array[i].type = materials[i].type;
         material_array[i].color = materials[i].color.colorToInt();
         material_array[i].p1 = materials[i].p1;
         material_array[i].p2 = materials[i].p2;
         material_array[i].p3 = materials[i].p3;
 
-        for (int j = 0; j < materials[i].image_names.size(); j++) {
+        for (int j = 0; j < materials[i].image_names.size(); j++) { // at most 3
             std::string image_name = materials[i].image_names[j];
-            SceneAssets::Texture* texture = getTextureByName(image_name);
-            if (!texture->isLoaded) {
-                Texture tex(texture->path.c_str());
-                texture->offset = pixels.size();
-                const float* pixel_data = tex.getData();
-                for (int i = 0; i < tex.dataLength(); i++) {
-                    pixels.push_back(pixel_data[i]);
-                }
-                texture->isLoaded = true;
-                texture->width = tex.width;
-                texture->height = tex.height;
-            }
-
-            if (j == 0) {
-                material_array[i].image1_offset = texture->offset;
-            } else if (j == 1) {
-                material_array[i].image2_offset = texture->offset;
-            } else if (j == 2) {
-                material_array[i].image3_offset = texture->offset;
-            } else {
-                std::cout << "Too many textures for material: " << materials[i].name << std::endl;
-                exit(1);
-            }
-
-            if (material_array[i].image_height != 0 && (material_array[i].image_height != texture->height || material_array[i].image_width != texture->width)) {
-                std::cout << "Textures must have the same dimensions for a material." << std::endl;
-                exit(1);
-            } else {
-                material_array[i].image_height = texture->height;
-                material_array[i].image_width = texture->width;
-            }
+            tryLoadTexture(material_array[i], j, image_name, pixels);
         }
     }
 
@@ -433,7 +468,41 @@ void SceneParser::getMaterialData(const Material** out_materials, size_t* num_ma
     *texture_length = pixels.size();
 
     *out_materials = material_array;
-    *num_materials = count;
+    *num_materials = material_count;
+}
+
+void SceneParser::tryLoadTexture(Material& mat, int imageIndex, std::string imageName, std::vector<float>& pixels) {
+    SceneAssets::Texture* texture = getTextureByName(imageName);
+    if (!texture->isLoaded) {
+        Texture tex(texture->path.c_str());
+        texture->offset = pixels.size();
+        const float* pixel_data = tex.getData();
+        for (int i = 0; i < tex.dataLength(); i++) {
+            pixels.push_back(pixel_data[i]);
+        }
+        texture->isLoaded = true;
+        texture->width = tex.width;
+        texture->height = tex.height;
+    }
+
+    if (imageIndex == 0) {
+        mat.image1_offset = texture->offset;
+    } else if (imageIndex == 1) {
+        mat.image2_offset = texture->offset;
+    } else if (imageIndex == 2) {
+        mat.image3_offset = texture->offset;
+    } else {
+        std::cout << "Too many textures for material" << std::endl;
+        exit(1);
+    }
+
+    if (mat.image_height != 0 && (mat.image_height != texture->height || mat.image_width != texture->width)) {
+        std::cout << "Textures must have the same dimensions for a material." << std::endl;
+        exit(1);
+    } else {
+        mat.image_height = texture->height;
+        mat.image_width = texture->width;
+    }
 }
 
 void SceneParser::getSceneConfigs(SceneConfigs* out_configs) {

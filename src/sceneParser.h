@@ -43,6 +43,12 @@ namespace SceneAssets
         Vec3 rotation;
         float scale;
     };
+    struct Sphere {
+        std::string name;
+        Vec3 position;
+        float radius;
+        std::string material_id;
+    };
 }
 
 class SceneParser {
@@ -53,6 +59,7 @@ public:
     std::vector<SceneAssets::Material> materials;
     std::vector<SceneAssets::Object> objects;
     std::vector<SceneAssets::ObjectInstance> object_instances;
+    std::vector<SceneAssets::Sphere> spheres;
     std::string background_image_name = "";
 
     void parseFromFile(const char* path);
@@ -64,12 +71,15 @@ public:
     void parseLineMaterialDef(const std::string& line, const std::string& name);
     void parseLineObjectDef(const std::string& line, const std::string& name);
     void parseLineObjectInstance(const std::string& line, const std::string& name);
+    void parseLineSphere(const std::string& line, const std::string& name);
+
 
     SceneAssets::Texture* getTextureByName(std::string name);
     SceneAssets::Model* getModelByName(std::string name);
     SceneAssets::Material* getMaterialByName(std::string name);
     SceneAssets::Object* getObjectByName(std::string name);
     SceneAssets::ObjectInstance* getObjectInstanceByName(std::string name);
+    SceneAssets::Sphere* getSphereByName(std::string name);
     int getMaterialIndexByName(std::string name);
 
     void getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes);
@@ -79,4 +89,5 @@ public:
 private:
     int unique_string_counter = 0;
     std::string get_unique_string();
+    void tryLoadTexture(Material& mat, int imageIndex, std::string imageName, std::vector<float>& pixels);
 };

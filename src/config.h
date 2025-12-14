@@ -7,8 +7,8 @@
 #define BACKGROUND_BRIGHTNESS 0.5f
 #define BACKGROUND_COLOR Vec3(1.0f, 1.0f, 0.05f)
 
-#define HDRI_EXPORT true
-
+#define HDRI_EXPORT false
+#define ENABLE_SPHERES true
 #define ENABLE_BVH true
 #define BVH_DEPTH 16
 #define BVH_NODE_MIN_TRIS 4

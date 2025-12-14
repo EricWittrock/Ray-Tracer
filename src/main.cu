@@ -116,10 +116,21 @@ __device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node)
     return tmin;
 }
 
-__global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
+__global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= scene_configs->outputWidth || y >= scene_configs->outputHeight) return;
+
+    // offset triangle data because first contiguous region is for spheres
+    float* spheres = nullptr;
+    float* tris = all_tris;
+    int numSpheres = 0;
+    if (ENABLE_SPHERES) {
+        numSpheres = static_cast<int>(all_tris[0]);
+        tris += 5 * numSpheres + 1;
+        spheres = all_tris + 1;
+    }
+
 
     curandState randState;
     curand_init(37811, x + y * scene_configs->outputWidth, 0, &randState); // 37811 is a big arbitrary prime
@@ -203,7 +214,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                     }
                 }
             }
-            else { //////// disabled BVH (for testing purposes)
+            else { // disabled BVH (for testing purposes)
                 for (int i = 0; i < numTris; i+=25) {
                     Vec3 v0(tris[i + 0], tris[i + 1], tris[i + 2]);
                     Vec3 v1(tris[i + 3], tris[i + 4], tris[i + 5]);
@@ -221,12 +232,51 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
                 }
             }
 
+            ////////////////////////////////////////////////////////////////////////////////
+
+            if (ENABLE_SPHERES) {
+                // all_tris is repurposed to hold spheres
+                // the first index is the number of spheres, N
+                // anything after N*5+1 is triangle data
+                bool closestHitIsSphere = false;
+                int hitSphereIndex = 0;
+                Vec3 sphereHitPos;
+                Vec3 sphereHitNormal;
+                for (int i = 0; i<numSpheres*5; i+=5) {
+                    float sphere_x = spheres[i + 0];
+                    float sphere_y = spheres[i + 1];
+                    float sphere_z = spheres[i + 2];
+                    float sphere_r = spheres[i + 3];
+                    // material is the 5th index, hence i += 5
+
+                    Vec3 hitPos;
+                    Vec3 hitNormal;
+                    Vec3 spherePos(sphere_x, sphere_y, sphere_z);
+                    bool intersects = Sphere::intersectSphere(ray, spherePos, sphere_r, hitPos, hitNormal);
+                    if (intersects) {
+                        float distSqr = (hitPos - ray.position).lengthSqr();
+                        if (distSqr >= minDistSqr) continue;
+                        
+                        closestHitIsSphere = true;
+                        minDistSqr = distSqr;
+                        sphereHitPos = hitPos;
+                        sphereHitNormal = hitNormal;
+                        hitSphereIndex = i;
+                    }
+                }
+
+                if(closestHitIsSphere) {
+                    Material hitMaterial = materials[hitSphereIndex + 4];
+                    Sphere::hitSphere(ray, sphereHitNormal, sphereHitPos, hitMaterial, textures, &randState);
+
+                    continue; // dont need to handle triangle intersect if we hit a sphere first
+                }
+ 
+            }
 
             ////////////////////////////////////////////////////////////////////////////////
-            // color += numTests * 0.01;
-            // break;
 
-            if (hitTriIndex >= 0) { // hit
+            if (hitTriIndex >= 0) { // a triangle has been hit
                 int hitIndex = static_cast<int>(tris[hitTriIndex + 24]);
                 Material hitMaterial = materials[hitIndex];
 
@@ -271,15 +321,6 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     pixels[idx + 0] = color.x;
     pixels[idx + 1] = color.y;
     pixels[idx + 2] = color.z;
-}
-
-
-__global__ void initScene(Object** objects) {
-    if (threadIdx.x == 0 && blockIdx.x == 0) { // TODO: is this check necessary?
-        objects[0] = new Sphere(Vec3(0.0f, -1.2f, -5.0f), 2.0f);
-        objects[1] = new Sphere(Vec3(3.0f, 3.0f, -5.4f), 1.5f);
-        objects[2] = new Floor(-3.2f);
-    }
 }
 
 
