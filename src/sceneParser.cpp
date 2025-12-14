@@ -13,6 +13,10 @@ namespace {
     };
 }
 
+std::string SceneParser::get_unique_string() {
+    return "str" + std::to_string(unique_string_counter++);
+}
+
 void SceneParser::parseFromFile(const char* path) {
     textures.clear();
     models.clear();
@@ -90,7 +94,7 @@ void SceneParser::parseFromFile(const char* path) {
         } 
         else if (first_word == "ADD_OBJECT") {
             scope = DEF_OBJECT_INSTANCE;
-            name = nth_word(line, 1);
+            name = get_unique_string();
             SceneAssets::ObjectInstance object_instance;
             object_instance.name = name;
             object_instances.push_back(object_instance);
@@ -223,7 +227,7 @@ void SceneParser::parseLineObjectInstance(const std::string& line, const std::st
             std::stof(nth_word(line, 1)),
             std::stof(nth_word(line, 2)),
             std::stof(nth_word(line, 3))
-        ) + SCENE_OFFSET;
+        );
     } 
     else if(first_word == "SCALE") {
         object_instance->scale = std::stof(nth_word(line, 1));

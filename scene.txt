@@ -1,13 +1,13 @@
-SET_OUTPUT_WIDTH 256
-SET_OUTPUT_HEIGHT 256
+SET_OUTPUT_WIDTH 512
+SET_OUTPUT_HEIGHT 512
 SET_NUM_SAMPLES 250
-SET_FOCAL_LENGTH 0.3
+SET_FOCAL_LENGTH 0.6
 SET_CAM_POS 0.0 0.0 0.0
 SET_CAM_ROTATION 0.0 0.0 0.0
 
 DEF_IMAGE backgroundTexture 
-# PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
-PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
+PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
+# PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
 
 DEF_IMAGE planetTexture 
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\earth.jpg
@@ -45,20 +45,20 @@ TYPE 2
 P1 0.5
 
 DEF_MATERIAL standard_mat
-TYPE 5
-COLOR 1.0 1.0 1.0
+TYPE 3
+COLOR 0.5 0.6 0.55
 P1 0.05
 P2 0.3
 
 DEF_MATERIAL planet_mat
-TYPE 5
+TYPE 3
 COLOR 1.0 1.0 1.0
 P1 0.05
 P2 0.3
 TEXTURE planetTexture
 
 DEF_MATERIAL standard_mat_orange
-TYPE 5
+TYPE 3
 COLOR 1.0 0.52 0.12
 P1 0.6
 P2 0.3
@@ -70,11 +70,15 @@ P1 1.0
 
 DEF_OBJ obj2
 MODEL sphereModel
-MATERIAL planet_mat
+MATERIAL glass_mat
+
+DEF_OBJ obj_monkey
+MODEL monkeyModel
+MATERIAL standard_mat_orange
 
 DEF_OBJ obj3
 MODEL planeModel
-MATERIAL planet_mat
+MATERIAL standard_mat
 
 DEF_OBJ obj_light
 MODEL sphereModel
@@ -83,17 +87,23 @@ MATERIAL light_mat
 
 SET_BACKGROUND backgroundTexture
 
-ADD_OBJECT light
-OBJECT obj_light
-POSITION 5.5 5.5 -2.5
+#ADD_OBJECT
+#OBJECT obj_light
+#POSITION 5.5 5.5 -2.5
+#SCALE 1.0
+
+ADD_OBJECT
+OBJECT obj_monkey
+POSITION 4.01 0.02 -8.5
 SCALE 1.0
 
-ADD_OBJECT someobj2
+ADD_OBJECT
 OBJECT obj2
-POSITION 0.01 0.02 -2.5
+POSITION 0.03 0.02 -2.5
 SCALE 1.0
 
-ADD_OBJECT someobj1
+ADD_OBJECT
 OBJECT obj3
 POSITION 0.0 -1.01 -4.9
+ROTATION 0.0 1.0 0.0
 SCALE 15.0

@@ -75,4 +75,8 @@ public:
     void getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes);
     void getMaterialData(const Material** out_materials, size_t* num_materials, const float** out_texture, size_t* texture_length);
     void getSceneConfigs(SceneConfigs* out_scene_configs);
+
+private:
+    int unique_string_counter = 0;
+    std::string get_unique_string();
 };

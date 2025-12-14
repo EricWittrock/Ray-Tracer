@@ -1,15 +1,10 @@
 #pragma once
 
-#define IMAGE_WIDTH 512
-#define IMAGE_HEIGHT IMAGE_WIDTH
-#define FOCAL_LENGTH 0.3f
-#define NUM_SAMPLES 1000
 #define MAX_BOUNCES 6
 #define ANTIALIASING_SAMPLES 4
-#define SCENE_OFFSET Vec3(0.0f, 0.0f, 0.0f)
 
 #define ENABLE_SKYBOX true
-#define BACKGROUND_BRIGHTNESS 1.0f
+#define BACKGROUND_BRIGHTNESS 0.5f
 #define BACKGROUND_COLOR Vec3(1.0f, 1.0f, 0.05f)
 
 #define ENABLE_BVH true

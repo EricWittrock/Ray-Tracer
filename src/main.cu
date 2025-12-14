@@ -119,10 +119,10 @@ __device__ float AABBIntersectDistance(const Ray& ray, const BVH::BVHNode& node)
 __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
-    if (x >= IMAGE_WIDTH || y >= IMAGE_WIDTH) return;
+    if (x >= scene_configs->outputWidth || y >= scene_configs->outputHeight) return;
 
     curandState randState;
-    curand_init(37811, x + y * IMAGE_WIDTH, 0, &randState); // 37811 is a big arbitrary prime
+    curand_init(37811, x + y * scene_configs->outputWidth, 0, &randState); // 37811 is a big arbitrary prime
 
     Vec3 cam_position(0.0f, 0.0f, 0.0f);
     Vec3 up(0.0f, 1.0f, 0.0f);
@@ -132,14 +132,14 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     Vec3 forward = up.cross(right).normalize();
 
 
-    const float sx = static_cast<float>(x) / IMAGE_WIDTH - 0.5f;
-    const float sy = - static_cast<float>(y) / IMAGE_WIDTH + 0.5f;
-    Vec3 s = forward * FOCAL_LENGTH + right * sx + up * sy;
+    const float sx = static_cast<float>(x) / scene_configs->outputWidth - 0.5f;
+    const float sy = - static_cast<float>(y) / scene_configs->outputHeight + 0.5f;
+    Vec3 s = forward * scene_configs->focalLength + right * sx + up * sy;
     Vec3 dir = s.normalize();
 
     Vec3 color(0.0f, 0.0f, 0.0f);
 
-    for (int k = 0; k < NUM_SAMPLES; k++) {
+    for (int k = 0; k < scene_configs->numSamples; k++) {
         Ray ray(cam_position, dir);
 
         for (int j = 0; j<MAX_BOUNCES; j++) {
@@ -256,7 +256,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
         }
     }
 
-    color /= static_cast<float>(NUM_SAMPLES);
+    color /= static_cast<float>(scene_configs->numSamples);
     toneMap(color);
     // if (color.x > 1.0f) color.x = 1.0f;
     // if (color.y > 1.0f) color.y = 1.0f;
@@ -265,7 +265,7 @@ __global__ void render2(float* pixels, float* tris, int numTris, BVH::BVHNode* b
     // if (color.y < 0.0f) color.y = 0.0f;
     // if (color.z < 0.0f) color.z = 0.0f;
 
-    int idx = (y * IMAGE_WIDTH + x) * 3;
+    int idx = (y * scene_configs->outputWidth + x) * 3;
     pixels[idx + 0] = color.x;
     pixels[idx + 1] = color.y;
     pixels[idx + 2] = color.z;
@@ -322,13 +322,13 @@ int main(int argc, char** argv)
     cudaMemcpy(gpuImageData, cpuImageData, imageDataLength * sizeof(float), cudaMemcpyKind::cudaMemcpyHostToDevice);
     std::cout << "Image data length: " << imageDataLength << std::endl;
 
-    size_t img_bytes = IMAGE_WIDTH * IMAGE_WIDTH * 3 * sizeof(float);
+    size_t img_bytes = scene_configs.outputWidth * scene_configs.outputHeight * 3 * sizeof(float);
     float* out_pixels;
     cudaMalloc(&out_pixels, img_bytes);
 
     // =================== Render ===================
     dim3 block(16, 16);
-    dim3 grid((IMAGE_WIDTH + block.x - 1) / block.x, (IMAGE_WIDTH + block.y - 1) / block.y);
+    dim3 grid((scene_configs.outputWidth + block.x - 1) / block.x, (scene_configs.outputHeight + block.y - 1) / block.y);
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -354,11 +354,11 @@ int main(int argc, char** argv)
     cudaEventElapsedTime(&milliseconds, start, stop);
     std::cout << "Render time: " << milliseconds << " ms" << std::endl;
 
-    float* pixels_cpu = new float[IMAGE_WIDTH * IMAGE_WIDTH * 3];
+    float* pixels_cpu = new float[scene_configs.outputWidth * scene_configs.outputHeight * 3];
     cudaMemcpy(pixels_cpu, out_pixels, img_bytes, cudaMemcpyKind::cudaMemcpyDeviceToHost);
 
 
-    Texture::saveImgData(OUTPUT_IMAGE_PATH, pixels_cpu, IMAGE_WIDTH, IMAGE_WIDTH);
+    Texture::saveImgData(OUTPUT_IMAGE_PATH, pixels_cpu, scene_configs.outputWidth, scene_configs.outputHeight);
     delete[] pixels_cpu;
 
     cudaFree(out_pixels);
