@@ -61,6 +61,13 @@ P1 0.05
 P2 0.3
 TEXTURE planetTexture
 
+DEF_MATERIAL noise_mat
+TYPE 3
+COLOR 1.0 1.0 1.0
+P1 0.05
+P2 0.3
+TEXTURE NOISE
+
 DEF_MATERIAL standard_mat_orange
 TYPE 3
 COLOR 1.0 0.52 0.12
@@ -76,10 +83,9 @@ TYPE 6
 COLOR 1.0 0.52 0.12
 P1 3.9
 
-
 DEF_OBJ obj2
 MODEL sphereModel
-MATERIAL glass_mat
+MATERIAL noise_mat
 
 DEF_OBJ obj_monkey
 MODEL monkeyModel
@@ -96,6 +102,10 @@ MATERIAL light_mat
 DEF_OBJ obj_volume
 MODEL sphereModel
 MATERIAL volume_mat
+
+DEF_OBJ obj_noise
+MODEL sphereModel
+MATERIAL noise_mat
 
 SET_BACKGROUND backgroundTexture
 
@@ -121,8 +131,8 @@ ROTATION 0.0 1.0 0.0
 SCALE 15.0
 
 ADD_OBJECT
-OBJECT obj_volume
-POSITION -3.0 -1.01 -3.9
+OBJECT obj_noise
+POSITION -3.0 0.01 -3.9
 ROTATION 0.0 1.0 0.0
 SCALE 1.0
 

@@ -1,6 +1,7 @@
 #include "sceneParser.h"
 #include "model.h"
 #include "texture.h"
+#include "noiseTexture.h"
 
 namespace {
     enum Scope {
@@ -490,6 +491,23 @@ void SceneParser::getMaterialData(const Material** out_materials, size_t* num_ma
 }
 
 void SceneParser::tryLoadTexture(Material& mat, int imageIndex, std::string imageName, std::vector<float>& pixels) {
+    if(imageName == "NOISE") {
+        int offset = pixels.size();
+        mat.image1_offset = offset;
+        mat.image_height = 512;
+        mat.image_width = 512;
+
+        NoiseTexture tex(mat.image_width, mat.image_height);
+        tex.seed(37811); // big arbitrary prime
+        tex.generate();
+
+        for (int i = 0; i < mat.image_width * mat.image_height * 3; i++) {
+            pixels.push_back(tex.data[i]);
+        }
+
+        return;
+    }
+    
     SceneAssets::Texture* texture = getTextureByName(imageName);
     if (!texture->isLoaded) {
         Texture tex(texture->path.c_str());

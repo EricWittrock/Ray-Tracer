@@ -51,7 +51,7 @@ public:
         Vec3 bary = barycentric(v0, v1, v2, hitPos);
         Vec3 normal = interpolateNormal(n0, n1, n2, bary);
 
-        // find image texture x y
+
         float tu1 = tris[hitTriIndex + 18];
         float tv1 = tris[hitTriIndex + 19];
         float tu2 = tris[hitTriIndex + 20];
@@ -60,7 +60,19 @@ public:
         float tv3 = tris[hitTriIndex + 23];
         float u = bary.x * tu1 + bary.y * tu2 + bary.z * tu3;
         float v = bary.x * tv1 + bary.y * tv2 + bary.z * tv3;
-        Vec3 clr = getTextureColor(u, v, textures, 0);
+        Vec3 clr = Vec3::fromColorInt(color);
+        Vec3 clr0 = clr;
+        Vec3 clr1 = clr;
+        Vec3 clr2 = clr;
+        if (image1_offset >= 0) {
+            clr0 = getTextureColor(u, v, textures, 0);
+        }
+        if (image2_offset >= 0) {
+            clr1 = getTextureColor(u, v, textures, 1);
+        }
+        if (image3_offset >= 0) {
+            clr2 = getTextureColor(u, v, textures, 2);
+        }
 
         // some materials don't importance sample because they are either legacy or perfect mirrors
         switch (type) {
@@ -74,7 +86,7 @@ public:
                 return reflectType2(ray, normal, hitPos, randState);
                 break;
             case 3:
-                reflectType3(ray, normal, hitPos, randState);
+                reflectType3(ray, normal, hitPos, clr0, randState);
                 break;
             case 4:
                 reflectType4(ray, normal, hitPos, randState);
@@ -237,17 +249,15 @@ private:
             ray.direction.reflect(normal2);
         }
 
-
         ray.marchForward(1e-5f);
         return false;
     }
 
     // lambertian
-    __device__ void reflectType3(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState) const 
+    __device__ void reflectType3(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Vec3 &clr, curandState* randState) const 
     {
         Vec3 normal2 = (normal.dot(ray.direction) < 0.0f) ? normal : (normal * -1.0f);
         
-        Vec3 clr = Vec3::fromColorInt(color);
         ray.diffuseMultiplier = ray.diffuseMultiplier * clr;
         ray.position = hitPos;
         Vec3 randomDir = randSphereVec(randState);
