@@ -140,6 +140,18 @@ __device__ bool checkScatteredVolume(Ray& ray, Vec3 hitPos, curandState* state) 
     return true;
 }
 
+__device__ void marchRay(Ray& ray) {
+    float dt = 1.0f; // time step size
+    float G = 10000000.0f;
+    float r2 = ray.position.lengthSqr() + 1e-5f;
+    Vec3 acceleration = ray.position / (r2 * std::sqrt(r2)) * -1.0f;
+
+    ray.marchVelocity += acceleration * dt * G;
+    Vec3 lastPos = ray.position;
+    ray.position += ray.marchVelocity * dt;
+    ray.direction = (ray.position - lastPos).normalize();
+}
+
 __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -204,10 +216,15 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
 
         Ray ray(rayOrigin, dir);
 
-        for (int j = 0; j<MAX_BOUNCES; j++) {
+        constexpr int numIterations = ENABLE_RAY_MARCHING ? RAY_MARCHING_MAX_STEPS : MAX_BOUNCES;
+        for (int j = 0; j<numIterations; j++) {
             Vec3 hitPos;
             int hitTriIndex = -1;
             float minDistSqr = 1e12f;
+
+            if (ENABLE_RAY_MARCHING) {
+                minDistSqr = ray.marchVelocity.lengthSqr();
+            }
 
             ////////////////////////////////////////////////////////////////////////////////
             if (ENABLE_BVH) {
@@ -344,6 +361,16 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
                 Vec3::normalize(ray.direction);
 
             } else {
+                if(ENABLE_RAY_MARCHING) {
+                    marchRay(ray); // didn't hit anything, so march forward
+                    // when ray marching, only hit the backdrop if far away from origin
+                    if (ray.position.lengthSqr() > 20.0f * 20.0f) {
+                        color += BACKGROUND_COLOR * ray.diffuseMultiplier * BACKGROUND_BRIGHTNESS;
+                        break;
+                    }
+                    continue;
+                }
+
                 if (ENABLE_SKYBOX && scene_configs->envTextureWidth > 0) {
                     // hit the emissive backdrop
                     float backdropX = atan2(ray.direction.z, ray.direction.x) / (2.0f * 3.14159f) + 0.5f;

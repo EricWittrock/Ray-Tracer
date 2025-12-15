@@ -10,7 +10,9 @@
 #define ENABLE_DEFOCUS_BLUR true
 #define ENABLE_ANTIALIASING true
 #define HDRI_EXPORT false
-#define ENABLE_SPHERES false
+#define ENABLE_SPHERES true
+#define ENABLE_RAY_MARCHING false
+#define RAY_MARCHING_MAX_STEPS 100
 #define ENABLE_BVH true
 #define BVH_DEPTH 16
 #define BVH_NODE_MIN_TRIS 4

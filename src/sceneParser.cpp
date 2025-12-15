@@ -498,7 +498,6 @@ void SceneParser::tryLoadTexture(Material& mat, int imageIndex, std::string imag
         mat.image_width = 512;
 
         NoiseTexture tex(mat.image_width, mat.image_height);
-        tex.seed(37811); // big arbitrary prime
         tex.generate();
 
         for (int i = 0; i < mat.image_width * mat.image_height * 3; i++) {
