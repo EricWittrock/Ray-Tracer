@@ -82,6 +82,9 @@ public:
             case 5:
                 reflectType5(ray, normal, hitPos, randState);
                 break;
+            case 6:
+                reflectType6(ray, normal, hitPos, randState);
+                break;
             default:
                 ray.emission = Vec3(1.0f, 0.0f, 1.0f); // the color of error
                 return true;  
@@ -116,7 +119,7 @@ private:
     {
         float r1 = curand_uniform(randState);
         float r2 = curand_uniform(randState);
-        float theta = r1 * 2.0f * 3.14159265358979323846f;
+        float theta = r1 * 2.0f * 3.14159f;
         float phi = acosf(2.0f * r2 - 1.0f);
         float x = sinf(phi) * cosf(theta);
         float y = sinf(phi) * sinf(theta);
@@ -301,6 +304,22 @@ private:
         Vec3 clr = Vec3::fromColorInt(color);
         ray.diffuseMultiplier = ray.diffuseMultiplier * clr * brdf / pdf_value;
         ray.direction = outgoing_direction;
+        ray.marchForward(1e-5f);
+    }
+
+    // volume
+    __device__ void reflectType6(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState) const 
+    {
+        bool entering = (normal.dot(ray.direction) < 0.0f);
+        if (entering) {
+            ray.volumeDensity += p1;
+            Vec3 clr = Vec3::fromColorInt(color);
+            ray.volumeColor = clr;
+        }else {
+            ray.volumeDensity -= p1;
+        }
+
+        ray.position = hitPos;
         ray.marchForward(1e-5f);
     }
 };

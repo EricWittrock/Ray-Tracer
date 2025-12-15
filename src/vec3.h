@@ -2,11 +2,13 @@
 #include <cmath>
 // #include <cstdlib>
 // #include <random>
+#include <curand_kernel.h>
 
-#ifndef __CUDACC__
-#define __host__
-#define __device__
-#endif
+
+// #ifndef __CUDACC__
+// #define __host__
+// #define __device__
+// #endif
 
 
 class Vec3 {
@@ -126,6 +128,17 @@ public:
             v1.y + t * (v2.y - v1.y),
             v1.z + t * (v2.z - v1.z)
         );
+    }
+
+    __device__ static Vec3 randSphere(curandState* randState) {
+        float r1 = curand_uniform(randState);
+        float r2 = curand_uniform(randState);
+        float theta = r1 * 2.0f * 3.14159;
+        float phi = acosf(2.0f * r2 - 1.0f);
+        float x = sinf(phi) * cosf(theta);
+        float y = sinf(phi) * sinf(theta);
+        float z = cosf(phi);
+        return Vec3(x, y, z);
     }
 
     __host__ __device__ inline void operator = (const Vec3& v) {

@@ -124,6 +124,22 @@ __device__ Vec3 randomPointInDisk(const Vec3& up, const Vec3& right, float radiu
     return up * y + right * x;
 }
 
+__device__ bool checkScatteredVolume(Ray& ray, Vec3 hitPos, curandState* state) {
+    if (ray.volumeDensity <= 0.0f) return false;
+
+    float r = curand_uniform(state);
+    float travel_dist = - std::logf(r) / ray.volumeDensity;
+    float dist_to_target = (hitPos - ray.position).length();
+
+    if (travel_dist > dist_to_target) return false; // no scattering
+
+    ray.position += ray.direction * travel_dist;
+    ray.direction = Vec3::randSphere(state);
+    ray.diffuseMultiplier = ray.diffuseMultiplier * ray.volumeColor;
+    
+    return true;
+}
+
 __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -300,18 +316,23 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
                     }
                 }
 
+
                 if(closestHitIsSphere) {
+                    if (ENABLE_VOLUME_SCATTERING && checkScatteredVolume(ray, hitPos, &randState)) {
+                        continue;
+                    }
                     Material hitMaterial = materials[hitSphereIndex + 4];
                     Sphere::hitSphere(ray, sphereHitNormal, sphereHitPos, hitMaterial, textures, &randState);
-
                     continue; // dont need to handle triangle intersect if we hit a sphere first
                 }
  
             }
 
             ////////////////////////////////////////////////////////////////////////////////
-
             if (hitTriIndex >= 0) { // a triangle has been hit
+                if (ENABLE_VOLUME_SCATTERING && checkScatteredVolume(ray, hitPos, &randState)) {
+                    continue;
+                }
                 int hitIndex = static_cast<int>(tris[hitTriIndex + 24]);
                 Material hitMaterial = materials[hitIndex];
 

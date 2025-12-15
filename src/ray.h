@@ -1,5 +1,7 @@
 #pragma once
 #include "vec3.h"
+#include <curand_kernel.h>
+
 
 // #ifndef __CUDACC__
 // #define __host__
@@ -13,13 +15,17 @@ public:
     Vec3 diffuseMultiplier;
     Vec3 emission;
     float refractiveIndex;
+    float volumeDensity;
+    Vec3 volumeColor;
 
     __host__ __device__ Ray(const Vec3& origin, const Vec3& direction)
         : position(origin),
          direction(direction),
          diffuseMultiplier(1.0f, 1.0f, 1.0f),
          emission(0.0f, 0.0f, 0.0f),
-         refractiveIndex(1.0f) {}
+         refractiveIndex(1.0f),
+         volumeDensity(0.0f),
+         volumeColor(1.0f, 1.0f, 1.0f) {}
 
     __host__ __device__ void marchForward(float distance) {
         position += direction * distance;
@@ -30,6 +36,9 @@ public:
         r.diffuseMultiplier = diffuseMultiplier;
         r.refractiveIndex = refractiveIndex;
         r.emission = emission;
+        r.refractiveIndex = refractiveIndex;
+        r.volumeDensity = volumeDensity;
+        r.volumeColor = volumeColor;
         return r;
     }
 };

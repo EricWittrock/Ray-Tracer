@@ -2,7 +2,7 @@
 
 #include "object.h"
 #include "material.h"
-#include "curand_kernel.h"
+#include <curand_kernel.h>
 
 class Sphere : public Object {
 public:
