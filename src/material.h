@@ -3,7 +3,7 @@
 #include "vec3.h"
 #include "ray.h"
 #include <curand_kernel.h>
-#include "rayAttractor.h"
+#include "importanceTri.h"
 
 
 class Material
@@ -38,7 +38,7 @@ public:
 
     // return true if terminated
     // hitMaterial.reflect(ray, hitTriIndex, tris, textures, &randState);
-    __device__ bool reflect(Ray &ray, const Vec3 &hitPos, int hitTriIndex, float* tris, float* textures, curandState* randState) const
+    __device__ bool reflect(Ray &ray, const Vec3 &hitPos, int hitTriIndex, float* tris, float* textures, int* importance_tris, int num_important_tris, curandState* randState) const
     // __device__ bool reflect(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, const Material &material, curandState* randState) const
     {
         Vec3 v0(tris[hitTriIndex + 0], tris[hitTriIndex + 1], tris[hitTriIndex + 2]);
@@ -74,7 +74,7 @@ public:
             clr2 = getTextureColor(u, v, textures, 2);
         }
 
-        // some materials don't importance sample because they are either legacy or perfect mirrors
+
         switch (type) {
             case 0:
                 reflectType0(ray, normal, hitPos, randState);
@@ -92,7 +92,7 @@ public:
                 reflectType4(ray, normal, hitPos, randState);
                 break;
             case 5:
-                reflectType5(ray, normal, hitPos, randState);
+                reflectType5(ray, normal, hitPos, randState, num_important_tris, importance_tris, tris);
                 break;
             case 6:
                 reflectType6(ray, normal, hitPos, randState);
@@ -212,7 +212,7 @@ private:
         ray.emission = clr * p1; // p1 = emission strength
     }
 
-    // legacy dielectric (no pdf)
+    //  dielectric
     __device__ bool reflectType2(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState) const 
     {
         ray.position = hitPos;
@@ -276,43 +276,61 @@ private:
         ray.marchForward(1e-5f);
     }
 
-    // lambertian pdf
-    __device__ void reflectType5(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState) const 
+    // lambertian importance sampling
+    __device__ void reflectType5(Ray &ray, const Vec3 &normal, const Vec3 &hitPos, curandState* randState, int num_important_tris, int* importance_tris, float* tris) const 
     {
         Vec3 normal2 = (normal.dot(ray.direction) < 0.0f) ? normal : (normal * -1.0f);
-        Vec3 incoming_direction = ray.direction; // save incoming direction
-        
         ray.position = hitPos;
 
-        bool importanceSample = true;
-        float pdf_value;
+        // mixture pdf with lambertian and random selected light
         Vec3 outgoing_direction;
-        
-        if (importanceSample) {
-            RayAttractor rayAttractor(Vec3(0.0f, 2.95f, -5.01f), Vec3(0.0f, 0.0f, 1.0f), Vec3(1.0f, 0.0f, 0.0f));
-            if (curand_uniform(randState) < 0.5f) {
-                outgoing_direction = rayAttractor.generate_random(hitPos, randState);
-            } else {
-                // outgoing_direction = randHemisphereVec(normal2, randState);
-                outgoing_direction = randCosineHemisphere(normal2, randState);
-            }
-            float cos_theta = normal2.dot(outgoing_direction);
-            if (cos_theta < 0.0f) cos_theta = 0.0f;
-            float brdf = cos_theta / 3.14159f;
-            pdf_value = rayAttractor.pdf_value(hitPos, outgoing_direction) * 0.5f + (brdf) * 0.5f;
+        bool sampledLight = false;
+        if (num_important_tris > 0 && curand_uniform(randState) < 0.5f) {
+            int importance_tri = importance_tris[curand(randState) % num_important_tris];
+            Vec3 ip1(tris[importance_tri + 0], tris[importance_tri + 1], tris[importance_tri + 2]);
+            Vec3 ip2(tris[importance_tri + 3], tris[importance_tri + 4], tris[importance_tri + 5]);
+            Vec3 ip3(tris[importance_tri + 6], tris[importance_tri + 7], tris[importance_tri + 8]);
+            ImportanceTri itri(ip1, ip2, ip3);
+            outgoing_direction = itri.generate_random(hitPos, randState);
+            sampledLight = true;
         } else {
-            outgoing_direction = randHemisphereVec(normal2, randState);
-            // outgoing_direction = randCosineHemisphere(normal2, randState);
-            pdf_value = 1.0f / (2 * 3.14159f);
+            outgoing_direction = randCosineHemisphere(normal2, randState);
         }
-        float cos_theta = normal2.dot(outgoing_direction);
-        if (cos_theta < 0.0f) cos_theta = 0.0f;
-        float brdf = cos_theta / 3.14159f;
 
-        // float scatter_pdf = lambertian_scatter_pdf(incoming_direction, outgoing_direction, normal2);
-        
+        // Reject
+        float cos_theta = normal2.dot(outgoing_direction);
+        if (cos_theta <= 0.0f) {
+            if (sampledLight) {
+                outgoing_direction = randCosineHemisphere(normal2, randState);
+                cos_theta = normal2.dot(outgoing_direction);
+            }
+        }
+        if (cos_theta < 0.0f) cos_theta = 0.0f;
+
+        const float inv_pi = 1.0f / 3.14159f;
+        float pdf_cos = cos_theta * inv_pi;
+
+        float pdf_light = 0.0f;
+        if (num_important_tris > 0) {
+            for (int i = 0; i < num_important_tris; i++) {
+                int triIndex = importance_tris[i];
+                Vec3 v0(tris[triIndex + 0], tris[triIndex + 1], tris[triIndex + 2]);
+                Vec3 v1(tris[triIndex + 3], tris[triIndex + 4], tris[triIndex + 5]);
+                Vec3 v2(tris[triIndex + 6], tris[triIndex + 7], tris[triIndex + 8]);
+                ImportanceTri tri(v0, v1, v2);
+                pdf_light += tri.pdf_value(hitPos, outgoing_direction) / static_cast<float>(num_important_tris);
+            }
+        }
+
+        float pdf = (num_important_tris > 0) ? (0.5f * pdf_cos + 0.5f * pdf_light) : pdf_cos;
+        if (pdf <= 1e-12f) {
+            // no light if pdf is too small
+            ray.diffuseMultiplier = Vec3(0.0f, 0.0f, 0.0f);
+            return;
+        }
+
         Vec3 clr = Vec3::fromColorInt(color);
-        ray.diffuseMultiplier = ray.diffuseMultiplier * clr * brdf / pdf_value;
+        ray.diffuseMultiplier = ray.diffuseMultiplier * clr * (pdf_cos / pdf);
         ray.direction = outgoing_direction;
         ray.marchForward(1e-5f);
     }

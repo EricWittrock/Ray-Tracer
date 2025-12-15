@@ -42,6 +42,7 @@ namespace SceneAssets
         Vec3 position;
         Vec3 rotation;
         float scale;
+        bool importance_sample = false;
     };
     struct Sphere {
         std::string name;
@@ -82,7 +83,7 @@ public:
     SceneAssets::Sphere* getSphereByName(std::string name);
     int getMaterialIndexByName(std::string name);
 
-    void getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes);
+    void getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes, int** is_tris, int* num_is_tris);
     void getMaterialData(const Material** out_materials, size_t* num_materials, const float** out_texture, size_t* texture_length);
     void getSceneConfigs(SceneConfigs* out_scene_configs);
 

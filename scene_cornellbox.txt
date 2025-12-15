@@ -1,26 +1,24 @@
-SET_IMAGE_WIDTH 256
-SET_NUM_SAMPLES 250
-SET_MAX_BOUNCES 6
+SET_OUTPUT_WIDTH 512
+SET_OUTPUT_HEIGHT 512
+SET_NUM_SAMPLES 500
 SET_FOCAL_LENGTH 0.3
-#SET_CAM_FORWARD 0.0 0.0 1.0
+SET_APERTURE_RADIUS 0.0
+SET_FOCUS_DISTANCE 2.0
 SET_CAM_POS 0.0 0.0 0.0
-#TODO: SET_CAM_LOOK_AT
-SET_CAM_LOOK_AT 0.0 100.0 0.0
+SET_CAM_ROTATION 0.0 0.0 0.0
+SET_CAM_VEL 0.0 0.0 0.0
+SET_CAM_ANGULAR_VEL 0.0 0.0 0.0
 
 DEF_IMAGE backgroundTexture 
 # PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\the_sky_is_on_fire_4k.hdr
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\kloofendal_43d_clear_4k.hdr
 
 
-
-
 DEF_MODEL monkeyModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.obj
-MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\monkey.mtl
 
 DEF_MODEL cubeModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.obj
-MTL_PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\cube.mtl
 
 DEF_MODEL sphereModel
 PATH C:\\Users\\ericj\\Desktop\\HW\\CS336\\Ray-Tracer\\textures\\sphere.obj
@@ -102,48 +100,49 @@ DEF_OBJ obj_sphere
 MODEL sphereModel
 MATERIAL standard_mat_orange
 
-DEF_OBJ obj_sphere2
-MODEL sphereModel
-MATERIAL light_mat
+DEF_OBJ obj_cube
+MODEL cubeModel
+MATERIAL white_mat
 
 SET_BACKGROUND backgroundTexture
 
-ADD_OBJECT sphere
-OBJECT obj_sphere
-POSITION 0.0 -2.0 -4.01
+ADD_OBJECT
+OBJECT obj_cube
+POSITION 0.51 -2.0 -4.01
+ROTATION 0.0 1.0 0.0
 SCALE 1.0
 
-ADD_OBJECT light_obj_plane
+ADD_OBJECT
 OBJECT obj_light_plane
 POSITION 0.0 2.95 -5.01
 ROTATION 3.14159 0.0 0.0
 SCALE 0.5
 
-ADD_OBJECT wall_floor
+ADD_OBJECT
 OBJECT white_wall
 POSITION 0.0 -3.01 -5.01
 ROTATION 0.0 0.0 0.0
 SCALE 3.03
 
-ADD_OBJECT wall_back
+ADD_OBJECT
 OBJECT white_wall
 POSITION 0.0 0.01 -8.0
 ROTATION 1.57079 0.0 0.0
 SCALE 3.03
 
-ADD_OBJECT wall_red
+ADD_OBJECT
 OBJECT red_wall
 POSITION -3 0.01 -5.0
 ROTATION 0.0 0.0 1.57079
 SCALE 3.03
 
-ADD_OBJECT wall_green
+ADD_OBJECT
 OBJECT green_wall
 POSITION 3 0.01 -5.0
 ROTATION 0.0 0.0 -1.57079
 SCALE 3.03
 
-ADD_OBJECT wall_ceil
+ADD_OBJECT
 OBJECT white_wall
 POSITION 0.01 3.0 -5.0
 ROTATION 0.0 0.0 0.0

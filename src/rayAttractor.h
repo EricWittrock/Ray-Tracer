@@ -2,6 +2,8 @@
 #include "vec3.h"
 #include <curand_kernel.h>
 
+// VESTIGIAL
+
 // used for importance sampling.
 // RayAttractor is a quad
 // It is automatically placed in the same position as a light quad

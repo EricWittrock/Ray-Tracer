@@ -152,7 +152,7 @@ __device__ void marchRay(Ray& ray) {
     ray.direction = (ray.position - lastPos).normalize();
 }
 
-__global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs) {
+__global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNode* bvhNodes, Material *materials, float* textures, SceneConfigs* scene_configs, int* importance_sampled_tris, int num_importance_sampled) {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= scene_configs->outputWidth || y >= scene_configs->outputHeight) return;
@@ -353,7 +353,7 @@ __global__ void render2(float* pixels, float* all_tris, int numTris, BVH::BVHNod
                 int hitIndex = static_cast<int>(tris[hitTriIndex + 24]);
                 Material hitMaterial = materials[hitIndex];
 
-                bool terminated = hitMaterial.reflect(ray, hitPos, hitTriIndex, tris, textures, &randState);
+                bool terminated = hitMaterial.reflect(ray, hitPos, hitTriIndex, tris, textures, importance_sampled_tris, num_importance_sampled, &randState);
                 if (terminated) {
                     color += ray.emission * ray.diffuseMultiplier;
                     break;
@@ -425,12 +425,21 @@ int main(int argc, char** argv)
     BVH::BVHNode* bvh_nodes = nullptr;
     int num_bvh_nodes = 0;
     float *gpuTris;
-    parser.getTriangleData(&cpuTris, &numTris, &bvh_nodes, &num_bvh_nodes);
+    int* cpuImportantTris;
+    int num_important_tris = 0;
+    int* gpuImportantTris;
+    parser.getTriangleData(&cpuTris, &numTris, &bvh_nodes, &num_bvh_nodes, &cpuImportantTris, &num_important_tris);
     cudaMalloc((void **)&gpuTris, numTris * sizeof(float));
     cudaMemcpy(gpuTris, cpuTris, numTris * sizeof(float), cudaMemcpyKind::cudaMemcpyHostToDevice);
     BVH::BVHNode* gpuBVHNodes;
     cudaMalloc((void **)&gpuBVHNodes, num_bvh_nodes * sizeof(BVH::BVHNode));
     cudaMemcpy(gpuBVHNodes, bvh_nodes, num_bvh_nodes * sizeof(BVH::BVHNode), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    gpuImportantTris = nullptr;
+    if (num_important_tris > 0) {
+        cudaMalloc((void **)&gpuImportantTris, num_important_tris * sizeof(int));
+        cudaMemcpy(gpuImportantTris, cpuImportantTris, num_important_tris * sizeof(int), cudaMemcpyKind::cudaMemcpyHostToDevice);
+    }
+    std::cout << "num important tris: " << num_important_tris << std::endl;
 
     // =================== Load Materials and Textures ===================
     const float *cpuImageData;
@@ -467,10 +476,20 @@ int main(int argc, char** argv)
         gpuBVHNodes,
         gpuMaterials,
         gpuImageData,
-        gpuSceneConfigs
+        gpuSceneConfigs,
+        gpuImportantTris,
+        num_important_tris
     );
+
+    cudaError_t launchErr = cudaGetLastError();
+    if (launchErr != cudaSuccess) {
+        std::cerr << "CUDA kernel launch error: " << cudaGetErrorString(launchErr) << std::endl;
+    }
     
-    cudaDeviceSynchronize();
+    cudaError_t syncErr = cudaDeviceSynchronize();
+    if (syncErr != cudaSuccess) {
+        std::cerr << "CUDA sync error: " << cudaGetErrorString(syncErr) << std::endl;
+    }
     std::cout << "done rendering" << std::endl;
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -491,6 +510,7 @@ int main(int argc, char** argv)
     cudaFree(gpuMaterials);
     cudaFree(gpuSceneConfigs);
     cudaFree(gpuImageData);
+    if (gpuImportantTris != nullptr) cudaFree(gpuImportantTris);
 
     std::cout << "Saved output\n";
     return 0;

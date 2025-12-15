@@ -272,6 +272,9 @@ void SceneParser::parseLineObjectInstance(const std::string& line, const std::st
             std::stof(nth_word(line, 3))
         );
     }
+    else if(first_word == "IMPORTANCE_SAMPLE") {
+        object_instance->importance_sample = true;
+    }
     else {
         std::cout << "Unknown OBJECT INSTANCE definition command: " << first_word << std::endl;
         exit(1);
@@ -392,14 +395,19 @@ SceneAssets::Sphere* SceneParser::getSphereByName(std::string name) {
     exit(1);
 }
 
-void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes) {  
+void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** bvh_nodes, int* num_bvh_nodes, int** is_tris, int* num_is_tris) {  
     std::vector<Model> models;
+
+    int num_importance_sampled_tris = 0;
 
     std::cout << "Number of object instances: " << object_instances.size() << std::endl;
     for (auto& object_instance : object_instances) {
         std::string object_name = object_instance.object_name;
         SceneAssets::Object* object = getObjectByName(object_name);
         int materialIndex = getMaterialIndexByName(object->material_id);
+        if (object_instance.importance_sample) {
+            materialIndex += 1000; // mark triangle as importance sampled
+        }
         std::string model_name = object->model_name;
         SceneAssets::Model* model_info = getModelByName(model_name);
         Model model;
@@ -444,8 +452,26 @@ void SceneParser::getTriangleData(float** tris, size_t* arr_len, BVH::BVHNode** 
         }
     }
 
+    for (size_t i = 0; i < total_length; i += 25) {
+        if (all_tris[i + 24 + sphereDataSize] > 1000.0f) {
+            num_importance_sampled_tris++;
+        }
+    }
+    int* importance_sampled_tris = new int[num_importance_sampled_tris];
+    int is_write = 0;
+    for (size_t i = 0; i < total_length; i += 25) {
+        if (all_tris[i + 24 + sphereDataSize] > 1000.0f) {
+            all_tris[i + 24 + sphereDataSize] -= 1000.0f;
+            importance_sampled_tris[is_write++] = static_cast<int>(i);
+        }
+    }
+
+    *num_is_tris = num_importance_sampled_tris;
+    *is_tris = importance_sampled_tris;
     *tris = all_tris;
-    *arr_len = total_length;
+    // arr_len is the number of floats in the buffer that will be copied to the GPU.
+    // If spheres are enabled, include the header+records prefix.
+    *arr_len = total_length + sphereDataSize;
 }
 
 void SceneParser::getMaterialData(const Material** out_materials, size_t* num_materials, const float** out_texture, size_t* texture_length) {
